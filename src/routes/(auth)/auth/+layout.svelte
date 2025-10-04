@@ -8,22 +8,48 @@
   // If already logged in, redirect to dashboard
   if (typeof window !== 'undefined') {
     const token = getToken();
-    if (token) {
-      goto('/dashboard');
-    }
+    if (token) goto('/dashboard');
   }
 </script>
 
-<div style="min-height:100dvh;display:flex;align-items:center;justify-content:center;background:#f7fafc;padding:16px;">
-  <div style="width:100%;max-width:420px;background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,0.05);overflow:hidden;">
-    <div style="padding:20px 24px;border-bottom:1px solid #e2e8f0;background:#f9fbff;">
-      <h1 style="margin:0;font-size:18px;font-weight:700;color:#1a202c;">Authentication</h1>
-      <p style="margin:6px 0 0;color:#4a5568;font-size:13px;">Masuk atau daftar untuk melanjutkan</p>
-    </div>
-    <div style="padding:20px 24px;">
-      {@render children?.()}
+<div class="min-h-[100svh] grid place-items-center bg-gradient-to-br from-violet-50 to-slate-50 dark:from-[#0b0617] dark:to-[#0b0617] px-4 py-8">
+  <div class="w-full max-w-5xl overflow-hidden rounded-3xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-white/5 backdrop-blur shadow-xl">
+    <div class="grid md:grid-cols-2">
+
+      <!-- Brand / Visual panel -->
+      <div class="relative hidden md:flex flex-col justify-between p-8 lg:p-10 bg-gradient-to-br from-violet-600 via-fuchsia-600 to-rose-500 text-white">
+        <div>
+          <div class="flex items-center gap-2 text-white/90">
+            <span class="text-sm/none uppercase tracking-widest">Welcome</span>
+          </div>
+          <h1 class="mt-4 text-3xl font-extrabold tracking-tight">INDOGREEN</h1>
+          <p class="mt-2 text-white/80">Sign in or create your account to continue.</p>
+        </div>
+
+        <ul class="mt-8 space-y-3 text-white/90">
+          <li class="flex items-start gap-3">
+            <svg class="mt-1 h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+            <span>Secure & modern authentication</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <svg class="mt-1 h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+            <span>Dark / light theme support</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <svg class="mt-1 h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+            <span>Responsive & accessible UI</span>
+          </li>
+        </ul>
+
+        <div class="absolute -right-20 -bottom-20 h-64 w-64 rounded-full bg-white/20 blur-3xl"></div>
+      </div>
+
+      <!-- Form slot -->
+      <div class="p-6 sm:p-8 lg:p-10 bg-white/80 dark:bg-[#0e0c19]/60">
+        <div class="mx-auto w-full max-w-md">
+          {@render children?.()}
+        </div>
+      </div>
     </div>
   </div>
 </div>
-
-
