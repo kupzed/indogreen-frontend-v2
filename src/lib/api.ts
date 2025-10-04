@@ -4,7 +4,7 @@
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
-const DEFAULT_API_BASE = 'http://127.0.0.1:8000/api';
+const DEFAULT_API_BASE = 'http://192.168.1.44:8001/api';
 
 export const API_BASE: string =
 	(import.meta as any).env?.PUBLIC_API_BASE ||
