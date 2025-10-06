@@ -13,15 +13,11 @@
   }
   
   function handleBackdropClick(event: MouseEvent) {
-    if (event.target === event.currentTarget) {
-      closeDrawer();
-    }
+    if (event.target === event.currentTarget) closeDrawer();
   }
   
   function handleEscapeKey(event: KeyboardEvent) {
-    if (event.key === 'Escape' && show) {
-      closeDrawer();
-    }
+    if (event.key === 'Escape' && show) closeDrawer();
   }
   
   // Add escape key listener when drawer is open
@@ -34,10 +30,11 @@
 
 {#if show}
   <div class="fixed inset-0 overflow-hidden z-50">
+    <!-- Backdrop -->
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div 
-      class="absolute inset-0" 
+      class="absolute inset-0 bg-black/25 dark:bg-neutral-800/40"
       on:click={handleBackdropClick}
       transition:fade="{{ duration: 300 }}"
     ></div>
@@ -47,14 +44,15 @@
       transition:slide="{{ axis: 'x', duration: 300 }}"
     >
       <div class="w-screen {width} transform transition-transform duration-500 ease-in-out translate-x-0">
-        <div class="h-full flex flex-col bg-white shadow-xl">
-          <div class="px-4 py-6 sm:px-6">
+        <div class="h-full flex flex-col bg-white dark:bg-black shadow-xl">
+          <div class="px-4 py-6 sm:px-6 border-b border-gray-100 dark:border-gray-700">
             <div class="flex items-center justify-between">
-              <h2 class="text-base font-semibold text-gray-900">{title}</h2>
+              <h2 class="text-base font-semibold text-gray-900 dark:text-white">{title}</h2>
               <button 
                 type="button" 
                 on:click={closeDrawer}
-                class="rounded-md text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                class="rounded-md text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100
+                       focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-offset-2 dark:focus:ring-offset-gray-800"
               >
                 <span class="sr-only">Close panel</span>
                 <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -64,7 +62,7 @@
             </div>
           </div>
           
-          <div class="flex-1 overflow-y-auto px-4 sm:px-6">
+          <div class="flex-1 overflow-y-auto px-4 sm:px-6 text-gray-900 dark:text-gray-100">
             <slot />
           </div>
         </div>
