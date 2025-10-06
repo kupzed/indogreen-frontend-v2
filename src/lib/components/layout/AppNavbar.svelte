@@ -132,7 +132,7 @@
           <!-- Left block: logo + links (desktop) -->
           <div class="flex items-center gap-3 min-w-0" bind:this={leftEl}>
             <a bind:this={logoEl} href="/" class="shrink-0 select-none font-semibold tracking-wide text-violet-700 dark:text-violet-300">
-              INDOGREEN
+              INDOGREEN <span class="text-xs text-violet-700 dark:text-violet-300">V2</span>
             </a>
   
             <!-- Desktop links -->
