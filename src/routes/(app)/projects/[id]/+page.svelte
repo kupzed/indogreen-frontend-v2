@@ -682,13 +682,13 @@
                   </div>
 
                   <div class="space-y-3">
-                    <div>
-                      <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Dari Tanggal</label>
+                    <div class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Dari Tanggal
                       <input type="date" bind:value={activityDateFromFilter} on:change={handleActivityDateFilter}
                         class="w-full px-3 py-2 rounded-xl text-sm border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70" />
                     </div>
-                    <div>
-                      <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Sampai Tanggal</label>
+                    <div class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Sampai Tanggal
                       <input type="date" bind:value={activityDateToFilter} on:change={handleActivityDateFilter}
                         class="w-full px-3 py-2 rounded-xl text-sm border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70" />
                     </div>
@@ -819,12 +819,15 @@
                           <div class="flex items-center gap-2">
                             <button on:click={() => openActivityDetailDrawer(activity)} class="text-amber-600 hover:text-amber-700" title="Detail">
                               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                              <span class="sr-only">Detail, {activity.name}</span>
                             </button>
                             <button on:click|stopPropagation={() => openEditActivityModal(activity)} title="Edit" class="text-violet-700 hover:text-violet-800 dark:text-violet-300 dark:hover:text-violet-200">
                               <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                              <span class="sr-only">Edit, {activity.name}</span>
                             </button>
                             <button on:click|stopPropagation={() => handleDeleteActivity(activity.id)} title="Delete" class="text-rose-600 hover:text-rose-700">
                               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                              <span class="sr-only">Hapus, {activity.name}</span>
                             </button>
                           </div>
                         </td>
@@ -920,13 +923,13 @@
                   </div>
 
                   <div class="space-y-3">
-                    <div>
-                      <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Dari Tanggal Terbit</label>
+                    <div class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Dari Tanggal Terbit
                       <input type="date" bind:value={certificateDateFromFilter} on:change={handleCertificateDateFilter}
                         class="w-full px-3 py-2 rounded-xl text-sm border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70" />
                     </div>
-                    <div>
-                      <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Sampai Tanggal Terbit</label>
+                    <div class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Sampai Tanggal Terbit
                       <input type="date" bind:value={certificateDateToFilter} on:change={handleCertificateDateFilter}
                         class="w-full px-3 py-2 rounded-xl text-sm border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70" />
                     </div>
@@ -1044,12 +1047,15 @@
                           <div class="flex items-center gap-2">
                             <button title="Detail" class="text-amber-600 hover:text-amber-700" on:click={() => openCertificateDetailDrawer(item)}>
                               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                              <span class="sr-only">Detail, {item.name}</span>
                             </button>
                             <button title="Edit" class="text-violet-700 hover:text-violet-800 dark:text-violet-300 dark:hover:text-violet-200" on:click={() => openEditCertificateModal(item)}>
                               <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                              <span class="sr-only">Edit, {item.name}</span>
                             </button>
                             <button title="Hapus" class="text-rose-600 hover:text-rose-700" on:click={() => handleDeleteCertificate(item.id)}>
                               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                              <span class="sr-only">Hapus, {item.name}</span>
                             </button>
                           </div>
                         </td>
