@@ -14,8 +14,8 @@
       return;
     }
     try {
-      const res = await fetchDashboard();
-      dashboard = res?.data ?? res;
+      const response: any = await fetchDashboard();
+      dashboard = response?.data ?? response;
     } catch (err: any) {
       errorMessage = err?.message || 'Gagal memuat dashboard';
     } finally {
@@ -32,7 +32,6 @@
     switch (status) {
       case 'Complete':
       case 'Aktif':
-      case 'Done':
         return 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-300';
       case 'Ongoing':
         return 'bg-blue-500/20 text-blue-600 dark:text-blue-300';
