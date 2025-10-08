@@ -815,7 +815,7 @@
                         <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-600 dark:text-slate-300">
                           {new Date(activity.activity_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
                         </td>
-                        <td class="whitespace-nowrap px-3 py-4 text-sm">
+                        <td class="relative whitespace-nowrap px-3 py-4 text-sm">
                           <div class="flex items-center gap-2">
                             <button on:click={() => openActivityDetailDrawer(activity)} class="text-amber-600 hover:text-amber-700" title="Detail">
                               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
@@ -1043,7 +1043,7 @@
                         <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-600 dark:text-slate-300">
                           {#if item.date_of_expired}{new Date(item.date_of_expired).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}{:else}-{/if}
                         </td>
-                        <td class="whitespace-nowrap px-3 py-4 text-sm">
+                        <td class="relative whitespace-nowrap px-3 py-4 text-sm">
                           <div class="flex items-center gap-2">
                             <button title="Detail" class="text-amber-600 hover:text-amber-700" on:click={() => openCertificateDetailDrawer(item)}>
                               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>

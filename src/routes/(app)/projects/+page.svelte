@@ -406,7 +406,7 @@
                     {new Date(project.finish_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
                   {:else}-{/if}
                 </td>
-                <td class="whitespace-nowrap px-3 py-4 text-sm">
+                <td class="relative whitespace-nowrap px-3 py-4 text-sm">
                   <div class="flex items-center gap-2">
                     <button on:click={() => openDetailDrawer(project)} class="text-amber-600 hover:text-amber-700" title="Detail">
                       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
