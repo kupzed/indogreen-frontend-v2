@@ -47,9 +47,36 @@ function extractMessage(u: unknown): string | undefined {
 	return undefined;
 }
 
+function isJsonCT(ct: string | null): boolean {
+	return !!ct && ct.includes('application/json');
+}
+
+function isUnauthorized(status: number, payload: unknown): boolean {
+	if (status === 401 || status === 419) return true;
+	const msg = extractMessage(payload)?.toLowerCase() ?? '';
+	return msg.includes('unauthenticated');
+}
+
+async function redirectToLogin() {
+	try {
+		if (typeof window !== 'undefined') {
+			// dynamic import supaya aman di lingkungan non-browser
+			const nav = await import('$app/navigation');
+			nav.goto('/auth/login');
+			return;
+		}
+	} catch {
+		/* noop */
+	}
+	// fallback
+	if (typeof window !== 'undefined') window.location.href = '/auth/login';
+}
+
 /**
  * Fetch wrapper with JSON support and optional auth.
- * T is the expected response type; defaults to unknown.
+ * - Injects Authorization when options.auth = true
+ * - Parses JSON otomatis
+ * - Jika 401/419 atau pesan "Unauthenticated": clear token + redirect ke /auth/login
  */
 export async function apiFetch<T = unknown>(
 	path: string,
@@ -99,24 +126,37 @@ export async function apiFetch<T = unknown>(
 		body: fetchBody
 	});
 
+	// Parse payload terlebih dahulu agar bisa mendeteksi unauthorized
+	let payload: unknown = null;
+	try {
+		const ct = response.headers.get('content-type');
+		payload = isJsonCT(ct) ? await response.json() : await response.text();
+	} catch {
+		// ignore parse errors
+	}
+
 	if (!response.ok) {
-		let errorBody: unknown = null;
-		try {
-			const ct = response.headers.get('content-type') ?? '';
-			errorBody = ct.includes('application/json') ? await response.json() : await response.text();
-		} catch {
-			// ignore parse error
+		if (isUnauthorized(response.status, payload)) {
+			try {
+				setToken(null);
+			} catch (err: unknown) {
+				console.error('Failed to clear token:', err);
+			}
+			await redirectToLogin();
+			// lempar error khusus supaya UI tidak menampilkan pesan "Unauthenticated"
+			throw new Error('AUTH_REDIRECT');
 		}
-		const message = extractMessage(errorBody) ?? `Request failed (${response.status})`;
+		const message = extractMessage(payload) ?? `Request failed (${response.status})`;
 		throw new Error(message);
 	}
 
-	// Try to parse JSON; fallback to text cast to unknown
-	const contentType = response.headers.get('content-type') || '';
-	if (contentType.includes('application/json')) {
-		return (await response.json()) as T;
+	// Sukses
+	const ct = response.headers.get('content-type') || '';
+	if (ct.includes('application/json')) {
+		// jika sebelumnya sudah di-parse (payload), gunakan itu saja
+		return (payload as T) ?? ((await response.json()) as T);
 	}
-	return (await response.text()) as unknown as T;
+	return (typeof payload === 'string' ? payload : await response.text()) as unknown as T;
 }
 
 /** Auth endpoints types */
