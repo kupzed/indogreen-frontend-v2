@@ -3,10 +3,15 @@
 
   export let activity: any = null;
 
+  let attachments: NormalizedAttachment[] = [];
+
+  // ====== Helpers Lampiran (nama/label + deskripsi) ======
   type NormalizedAttachment = {
-    name: string;
     url: string;
-    sizeLabel?: string;
+    filename: string;     // nama file asli (dari path)
+    displayName: string;  // label/nama tampil (label/nama/title/name) -> fallback filename
+    desc?: string;        // deskripsi/keterangan/caption
+    sizeLabel?: string;   // "123KB", "1.2MB", dst
   };
 
   function filenameFromPath(path: string) {
@@ -18,55 +23,41 @@
     }
   }
 
-  function formatBytes(bytes: number | undefined) {
-    if (!Number.isFinite(bytes as number)) return undefined;
-    let num = Number(bytes);
+  function formatBytes(bytes?: number) {
+    if (bytes === undefined || !Number.isFinite(bytes)) return undefined;
+    let n = Number(bytes);
     const units = ["bytes", "KB", "MB", "GB", "TB"];
     let i = 0;
-    while (num >= 1024 && i < units.length - 1) {
-      num /= 1024;
-      i++;
-    }
-    const rounded = i === 0 ? Math.round(num) : num < 10 ? num.toFixed(1) : Math.round(num).toString();
+    while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
+    const rounded = i === 0 ? Math.round(n) : n < 10 ? n.toFixed(1) : Math.round(n).toString();
     return `${rounded}${units[i]}`;
   }
 
   function normalizeAttachments(att: any): NormalizedAttachment[] {
     if (!att) return [];
-    // Array
-    if (Array.isArray(att)) {
-      return att
-        .map((a: any) => {
-          if (typeof a === "string") {
-            return {
-              name: filenameFromPath(a),
-              url: storageUrl(a)
-            };
-          }
-          // Object
-          const url =
-            a?.url ??
-            (a?.path ? storageUrl(a.path) : a?.file ? storageUrl(a.file) : "");
-          const name = a?.name ?? filenameFromPath(a?.path ?? a?.file ?? a?.url ?? "");
-          const sizeLabel = a?.sizeLabel ?? formatBytes(a?.size);
-          return url ? { name, url, sizeLabel } : null;
-        })
-        .filter(Boolean) as NormalizedAttachment[];
-    }
-    // Single string
-    if (typeof att === "string") {
-      return [{ name: filenameFromPath(att), url: storageUrl(att) }];
-    }
-    // Single object
-    if (typeof att === "object") {
-      const url =
-        att?.url ??
-        (att?.path ? storageUrl(att.path) : att?.file ? storageUrl(att.file) : "");
-      const name = att?.name ?? filenameFromPath(att?.path ?? att?.file ?? att?.url ?? "");
-      const sizeLabel = att?.sizeLabel ?? formatBytes(att?.size);
-      return url ? [{ name, url, sizeLabel }] : [];
-    }
-    return [];
+    const normalizeOne = (a: any): NormalizedAttachment | null => {
+      if (!a) return null;
+
+      // String path
+      if (typeof a === "string") {
+        const filename = filenameFromPath(a);
+        return { url: storageUrl(a), filename, displayName: filename };
+      }
+
+      // Object
+      const rawPath = a?.path ?? a?.file ?? a?.file_path ?? "";
+      const url = a?.url ?? (rawPath ? storageUrl(rawPath) : "");
+      if (!url) return null;
+
+      const filename = filenameFromPath(rawPath || a?.url || "");
+      const displayName = a?.label ?? a?.nama ?? a?.title ?? a?.name ?? filename;
+      const desc = a?.description ?? a?.deskripsi ?? a?.keterangan ?? a?.caption ?? undefined;
+      const sizeLabel = a?.sizeLabel ?? formatBytes(a?.size);
+      return { url, filename, displayName, desc, sizeLabel };
+    };
+
+    return (Array.isArray(att) ? att.map(normalizeOne) : [normalizeOne(att)])
+      .filter(Boolean) as NormalizedAttachment[];
   }
 
   // Mendukung activity.attachment (single) atau activity.attachments (array)
@@ -149,44 +140,52 @@
         </dd>
       </div>
 
-      <div class="bg-white dark:bg-black px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-        <dt class="text-sm font-medium text-gray-500 dark:text-gray-300">Lampiran</dt>
-        <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100 sm:mt-0 sm:col-span-2">
+      <!-- ====== Lampiran (nama tampil + deskripsi) ====== -->
+      <div class="bg-white dark:bg-black px-4 py-2 sm:grid-cols-3 sm:gap-4 sm:px-6">
+        <dt class="text-sm mb-2 font-medium text-gray-500 dark:text-gray-300">Lampiran</dt>
+        <dd class="mt-1 text-sm grid grid-cols-1 sm:col-span-2">
           {#if attachments.length}
             <ul role="list" class="divide-y divide-gray-100 dark:divide-white/5 rounded-md border border-gray-200/80 dark:border-white/20">
               {#each attachments as file}
-                <li class="flex items-center justify-between py-4 pr-5 pl-4 text-sm">
-                  <div class="flex w-0 flex-1 items-center">
+                <li class="py-4 pr-5 pl-4">
+                  <div class="flex items-start gap-3">
                     <!-- Icon -->
-                    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" class="w-5 h-5 shrink-0 text-gray-500">
+                    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" class="w-5 h-5 shrink-0 text-gray-500 mt-0.5">
                       <path fill-rule="evenodd" clip-rule="evenodd"
                         d="M15.621 4.379a3 3 0 0 0-4.242 0l-7 7a3 3 0 0 0 4.241 4.243h.001l.497-.5a.75.75 0 0 1 1.064 1.057l-.498.501-.002.002a4.5 4.5 0 0 1-6.364-6.364l7-7a4.5 4.5 0 0 1 6.368 6.36l-3.455 3.553A2.625 2.625 0 1 1 9.52 9.52l3.45-3.451a.75.75 0 1 1 1.061 1.06l-3.45 3.451a1.125 1.125 0 0 0 1.587 1.595l3.454-3.553a3 3 0 0 0 0-4.242Z" />
                     </svg>
-                    <div class="ml-4 flex min-w-0 flex-1 gap-2">
-                      <span class="truncate font-medium text-gray-900 dark:text-white">{file.name}</span>
-                      {#if file.sizeLabel}
-                        <span class="shrink-0 text-gray-500 dark:text-gray-400">{file.sizeLabel}</span>
+
+                    <div class="min-w-0 flex-1">
+                      <div class="flex items-center gap-2">
+                        <span class="font-medium text-gray-900 dark:text-white">{file.displayName}</span>
+                        {#if file.sizeLabel}
+                          <span class="shrink-0 text-xs text-gray-500 dark:text-gray-400">{file.sizeLabel}</span>
+                        {/if}
+                      </div>
+                      {#if file.desc}
+                        <p class="mt-1 text-xs text-gray-600 dark:text-gray-300">{file.desc}</p>
                       {/if}
                     </div>
-                  </div>
-                  <div class="relative ml-4 shrink-0">
-                    <a
-                      href={file.url}
-                      target="_blank"
-                      rel="noopener"
-                      download
-                      class="inline-flex items-center justify-center rounded-md p-1 hover:bg-gray-100 dark:hover:bg-white/10
-                             text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300
-                             focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-                      aria-label={`Download ${file.name}`}
-                      title={`Download ${file.name}`}
-                    >
-                      <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M12 3v12m0 0 4-4m-4 4-4-4"></path>
-                        <path d="M5 21h14"></path>
-                      </svg>
-                      <span class="sr-only">Download</span>
-                    </a>
+
+                    <div class="shrink-0">
+                      <a
+                        href={file.url}
+                        target="_blank"
+                        rel="noopener"
+                        download
+                        class="inline-flex items-center justify-center rounded-md p-1 hover:bg-gray-100 dark:hover:bg-white/10
+                               text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300
+                               focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                        aria-label={`Download ${file.displayName}`}
+                        title={`Download ${file.displayName}`}
+                      >
+                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <path d="M12 3v12m0 0 4-4m-4 4-4-4"></path>
+                          <path d="M5 21h14"></path>
+                        </svg>
+                        <span class="sr-only">Download</span>
+                      </a>
+                    </div>
                   </div>
                 </li>
               {/each}

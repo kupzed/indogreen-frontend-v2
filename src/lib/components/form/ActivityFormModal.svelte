@@ -6,7 +6,7 @@
   export let title: string = 'Form Aktivitas';
   export let submitLabel: string = 'Simpan';
   export let idPrefix: string = 'activity';
-  export let allowRemoveAttachment: boolean = false;
+  export let allowRemoveAttachment: boolean = true;
   export let showProjectSelect: boolean = true;
 
   export let form: {
@@ -15,13 +15,26 @@
     project_id: string | number | '';
     kategori: string | '';
     activity_date: string | '';
-    attachment: File | null;
     jenis: string | '';
     mitra_id: number | string | '' | null;
     from?: string | '';
     to?: string | '';
-    attachment_removed?: boolean;
+    // multi-file
+    attachments?: File[];
+    attachment_names?: string[];
+    attachment_descriptions?: string[];
+    // edit support
+    existing_attachments?: Array<{ id: number; name: string; description?: string; url: string; size?: number; original_name?: string }>;
+    removed_existing_ids?: number[];
   };
+
+  function formatFileSize(bytes: number): string {
+    if (!bytes) return '';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.min(sizes.length - 1, Math.floor(Math.log(bytes) / Math.log(k)));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+  }
 
   export let projects: Array<{
     id: number;
@@ -33,11 +46,11 @@
 
   const activityKategoriList = [
     'Expense Report','Invoice','Purchase Order','Payment','Quotation',
-    'Faktur Pajak','Kasbon','Laporan Teknis','Surat Masuk','Surat Keluar','Kontrak'
+    'Faktur Pajak','Kasbon','Laporan Teknis','Surat Masuk','Surat Keluar', 
+    'Kontrak', 'Berita Acara', 'Receive Item', 'Other',
   ];
   const activityJenisList = ['Internal', 'Customer', 'Vendor'];
 
-  export let currentFileName: string = '';
   export let onSubmit: () => Promise<void> | void;
 
   $: selectedProject = projects.find((p) => p.id === Number(form.project_id));
@@ -63,7 +76,6 @@
 
   <form on:submit|preventDefault={handleSubmit} autocomplete="off">
     <fieldset disabled={isSubmitting} class="space-y-4">
-      <!-- Name -->
       <div>
         <label for="{idPrefix}_name" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Nama Aktivitas</label>
         <div class="mt-2">
@@ -81,7 +93,6 @@
         </div>
       </div>
 
-      <!-- Project -->
       {#if showProjectSelect}
         <div>
           <label for="{idPrefix}_project_id" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Project</label>
@@ -103,7 +114,6 @@
         </div>
       {/if}
 
-      <!-- Jenis -->
       <div>
         <label for="{idPrefix}_jenis" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Jenis</label>
         <div class="mt-2">
@@ -123,7 +133,6 @@
         </div>
       </div>
 
-      <!-- Mitra logic -->
       {#if form.jenis === 'Customer'}
         <p class="text-sm text-gray-500 dark:text-gray-400">Customer akan otomatis dipilih berdasarkan Project.</p>
       {:else if form.jenis === 'Vendor'}
@@ -147,7 +156,6 @@
         </div>
       {/if}
 
-      <!-- Kategori -->
       <div>
         <label for="{idPrefix}_kategori" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Kategori</label>
         <div class="mt-2">
@@ -167,7 +175,6 @@
         </div>
       </div>
 
-      <!-- From / To -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label for="{idPrefix}_from" class="block text-sm/6 font-medium text-gray-900 dark:text-white">From (Optional)</label>
@@ -199,7 +206,6 @@
         </div>
       </div>
 
-      <!-- Description -->
       <div>
         <label for="{idPrefix}_description" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Deskripsi</label>
         <div class="mt-2">
@@ -217,7 +223,6 @@
         </div>
       </div>
 
-      <!-- Activity Date -->
       <div>
         <label for="{idPrefix}_activity_date" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Tanggal Aktivitas</label>
         <div class="mt-2">
@@ -233,26 +238,73 @@
         </div>
       </div>
 
-      <!-- Attachment -->
+      <!-- Attachment (multi-file) -->
       <FileAttachment
-        id="{idPrefix}_attachment"
+        id="{idPrefix}_attachments"
         label="Lampiran"
-        bind:file={form.attachment}
-        bind:fileName={currentFileName}
+        bind:files={form.attachments}
+        bind:fileNames={form.attachment_names}
+        bind:fileDescriptions={form.attachment_descriptions}
+        maxFiles={10}
         showRemoveButton={allowRemoveAttachment}
-        on:change={(e) => {
-          form.attachment = e.detail.file;
-          currentFileName = e.detail.fileName;
-          if (form.attachment_removed !== undefined) form.attachment_removed = false;
-        }}
-        on:remove={() => {
-          if (allowRemoveAttachment) {
-            form.attachment_removed = true;
-            form.attachment = null;
-            currentFileName = '';
-          }
-        }}
       />
+
+      <!-- Lampiran lama (opsional saat edit). Existing attachments now support
+           editing of both the name and description. -->
+      {#if form.existing_attachments && form.existing_attachments.length > 0}
+        <div class="mt-3 space-y-3">
+          <p class="text-sm font-medium text-gray-900 dark:text-white">Lampiran Lama</p>
+          {#each form.existing_attachments as att, i (att.id)}
+            <div class="rounded border px-3 py-2 text-sm dark:border-gray-700 space-y-2">
+              <div class="flex items-center justify-between gap-3">
+                <a
+                  class="truncate text-indigo-600 dark:text-indigo-400 hover:underline"
+                  href={att.url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {att.original_name ?? att.name}
+                </a>
+              </div>
+              <!-- Editable name for existing attachment -->
+              <input
+                type="text"
+                bind:value={att.name}
+                required
+                placeholder="Nama lampiran"
+                class="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded
+                       bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                       focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+              <!-- Editable description for existing attachment -->
+              <input
+                type="text"
+                bind:value={att.description}
+                required
+                placeholder="Deskripsi lampiran"
+                class="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded
+                       bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                       focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+              <div class="flex items-center justify-end gap-3">
+                  {#if att.size}
+                    <span class="text-gray-500 dark:text-gray-400">{formatFileSize(att.size)}</span>
+                  {/if}
+                  <button
+                    type="button"
+                    class="text-red-600 hover:text-red-700"
+                    on:click={() => {
+                      form.removed_existing_ids = [...(form.removed_existing_ids ?? []), att.id];
+                      form.existing_attachments = form.existing_attachments!.filter(x => x.id !== att.id);
+                    }}
+                  >
+                    Hapus
+                  </button>
+                </div>
+            </div>
+          {/each}
+        </div>
+      {/if}
     </fieldset>
 
     <div class="mt-6">
@@ -277,3 +329,7 @@
     </div>
   </form>
 </Modal>
+
+<style>
+  :global(.break-all){ word-break: break-all; overflow-wrap: anywhere; }
+</style>
