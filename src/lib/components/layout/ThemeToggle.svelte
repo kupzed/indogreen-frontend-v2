@@ -5,7 +5,6 @@
   export let fullWidth = false;
 
   let mode: 'light' | 'dark' = 'light';
-  let cleanup: (() => void) | undefined;
 
   const root = typeof document !== 'undefined' ? document.documentElement : null;
   const readMode = () => (root?.classList.contains('dark') ? 'dark' : 'light');
@@ -17,7 +16,6 @@
   }
 
   function setExternal(next: 'light' | 'dark') {
-    // Kalau store-mu writable, update juga biar integrasi tetap jalan.
     try { (externalTheme as any)?.set?.(next); } catch {}
   }
 
@@ -33,15 +31,14 @@
     apply(mode);
     setExternal(mode);
 
-    // Observe perubahan kelas <html> agar semua instance sinkron
+    // Sinkron dengan perubahan class <html>
     const obs = new MutationObserver(() => {
       const m = readMode();
       if (mode !== m) mode = m;
     });
     if (root) obs.observe(root, { attributes: true, attributeFilter: ['class'] });
 
-    cleanup = () => obs.disconnect();
-    return cleanup;
+    return () => obs.disconnect();
   });
 
   function toggle() {
@@ -52,6 +49,7 @@
 </script>
 
 <button
+  type="button"
   on:click={toggle}
   class="inline-flex items-center gap-2 px-3 py-2 rounded-full border border-black/5 dark:border-white/10
          hover:bg-black/5 dark:hover:bg-white/5 text-sm text-slate-700 dark:text-slate-200 w-auto"

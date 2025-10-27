@@ -7,19 +7,17 @@
   import { theme } from '$lib/stores/theme';
   import AppNavbar from '$lib/components/layout/AppNavbar.svelte';
 
+  let { children } = $props();
+
   onMount(() => {
     const unsub = theme.subscribe(() => {});
-    return unsub;
-  });
 
-  // Minimal route guard: redirect unauthenticated users away from /dashboard
-  if (typeof window !== 'undefined') {
     const isDashboard = window.location.pathname.startsWith('/dashboard');
     const token = getToken();
     if (isDashboard && !token) goto('/auth/login');
-  }
 
-  let { children } = $props();
+    return unsub;
+  });
 </script>
 
 <svelte:head>
@@ -31,7 +29,7 @@
   <AppNavbar />
 
   <!-- Page container -->
-  <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
+  <main class="mx-auto max-w-1xl px-4 sm:px-6 lg:px-8 py-6">
     {@render children?.()}
   </main>
 </div>
