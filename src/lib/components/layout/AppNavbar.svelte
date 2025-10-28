@@ -153,7 +153,7 @@
 <!-- Top bar -->
 <div bind:this={navEl} class="sticky top-0 z-50" role="banner">
   <div class="backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:supports-[backdrop-filter]:bg-[#0b0617]/70 bg-white/90 dark:bg-[#0b0617]/90 border-b border-black/5 dark:border-white/10">
-    <nav class="mx-auto max-w-1xl px-4 sm:px-6 lg:px-8">
+    <nav class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <div class="flex h-[64px] items-center justify-between gap-2">
         <!-- Left block: logo + links (desktop) -->
         <div class="flex items-center gap-3 min-w-0" bind:this={leftEl}>
