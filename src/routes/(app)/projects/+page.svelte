@@ -6,25 +6,25 @@
   import ProjectDetail from '$lib/components/detail/ProjectDetail.svelte';
   import Pagination from '$lib/components/Pagination.svelte';
   import ProjectFormModal from '$lib/components/form/ProjectFormModal.svelte';
+  import ProjectFilterDesktop from '$lib/components/filters/ProjectFilterDesktop.svelte';
+  import ProjectFilterMobile from '$lib/components/filters/ProjectFilterMobile.svelte';
 
+  // ====== DATA ======
   let projects: any[] = [];
   let customers: any[] = [];
   let loading = true;
   let error = '';
-  let search: string = '';
-  let statusFilter: string = '';
-  let kategoriFilter: string = '';
-  let certProjectFilter: boolean = false;
-  let dateFromFilter: string = '';
-  let dateToFilter: string = '';
-  let showDateFilter: boolean = false;
-  let currentPage: number = 1;
-  let lastPage: number = 1;
-  let totalProjects: number = 0;
-  let perPage: number = 10;
-  const perPageOptions = [10, 25, 50, 100];
 
-  // toggle tampilan
+  // ====== FILTER / QUERY STATE ======
+  let search = '';
+  let statusFilter = '';
+  let kategoriFilter = '';
+  let certProjectFilter = false;
+  let dateFromFilter = '';
+  let dateToFilter = '';
+
+  // ====== UI STATE ======
+  // view toggle
   let activeView: 'table' | 'list' = 'table';
   const views: Array<'table' | 'list'> = ['table', 'list'];
   function handleViewKeydown(e: KeyboardEvent) {
@@ -36,14 +36,50 @@
     }
   }
 
-  // modal
+  // sidebar & mobile modal
+  let showSidebar = false;        // desktop toggle
+  let showMobileFilter = false;  // mobile modal
+
+  const GRID_2COL = 'lg:grid-cols-[260px_minmax(0,1fr)]';
+
+  function applyUpdate(key: 'status'|'kategori'|'cert'|'dateFrom'|'dateTo', value: any) {
+    if (key === 'status') statusFilter = value as string;
+    if (key === 'kategori') kategoriFilter = value as string;
+    if (key === 'cert') certProjectFilter = Boolean(value);
+    if (key === 'dateFrom') dateFromFilter = value as string;
+    if (key === 'dateTo') dateToFilter = value as string;
+  }
+
+  // desktop: update + fetch
+  function onDesktopUpdate(e: CustomEvent<{key:any, value:any}>) {
+    applyUpdate(e.detail.key, e.detail.value);
+    handleFilterOrSearch();
+  }
+  function onDesktopClear() { clearFilters(); }
+
+  // mobile: update state saja, fetch saat Done
+  function onMobileUpdate(e: CustomEvent<{key:any, value:any}>) {
+    applyUpdate(e.detail.key, e.detail.value);
+  }
+  function onMobileClear() { clearFilters(); }
+  function onMobileApply() {
+    showMobileFilter = false;
+    handleFilterOrSearch();
+  }
+
+  // modal form & drawer
   let showCreateModal = false;
   let showEditModal = false;
   let editingProject: any = null;
-
-  // drawer
   let showDetailDrawer = false;
   let selectedProject: any = null;
+
+  // pagination
+  let currentPage = 1;
+  let lastPage = 1;
+  let totalProjects = 0;
+  let perPage = 50;
+  const perPageOptions = [10, 25, 50, 100];
 
   // form
   let form = {
@@ -51,11 +87,13 @@
     mitra_id: '', kategori: '', lokasi: '', no_po: '', no_so: '', is_cert_projects: false,
   };
 
+  // options
   const projectStatuses = ['Ongoing', 'Prospect', 'Complete', 'Cancel'];
   const projectKategoris = [
     'PLTS Hybrid','PLTS Ongrid','PLTS Offgrid','PJUTS All In One','PJUTS Two In One','PJUTS Konvensional'
   ];
 
+  // ====== HELPERS ======
   function qs(obj: Record<string, any>) {
     const p = new URLSearchParams();
     Object.entries(obj).forEach(([k, v]) => {
@@ -79,9 +117,7 @@
       })}`;
 
       const res: any = await apiFetch(url, { auth: true });
-
-      // fleksibel terhadap bentuk respons
-      projects = res?.data ?? res?.items ?? res?.projects ?? res ?? [];
+      projects      = res?.data ?? res?.items ?? res?.projects ?? res ?? [];
       currentPage   = res?.pagination?.current_page ?? res?.current_page ?? 1;
       lastPage      = res?.pagination?.last_page   ?? res?.last_page   ?? 1;
       totalProjects = res?.pagination?.total       ?? res?.total       ?? (Array.isArray(projects) ? projects.length : 0);
@@ -106,28 +142,41 @@
     if (!getToken()) { goto('/auth/login'); return; }
     fetchProjects();
     fetchCustomers();
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
   });
 
   function handleFilterOrSearch() { currentPage = 1; fetchProjects(); }
+
   function clearFilters() {
-    search = ''; statusFilter = ''; kategoriFilter = '';
-    dateFromFilter = ''; dateToFilter = ''; showDateFilter = false;
-    currentPage = 1; fetchProjects();
+    search = '';
+    statusFilter = '';
+    kategoriFilter = '';
+    certProjectFilter = false;
+    dateFromFilter = '';
+    dateToFilter = '';
+    currentPage = 1;
+    fetchProjects();
   }
-  function toggleDateFilter() { showDateFilter = !showDateFilter; }
-  function handleClickOutside(event: MouseEvent) {
-    const target = event.target as HTMLElement;
-    if (!target.closest('.date-filter-dropdown') && !target.closest('.date-filter-button')) showDateFilter = false;
+
+  function clearOneFilter(key: 'status'|'kategori'|'cert'|'date') {
+    if (key === 'status') statusFilter = '';
+    if (key === 'kategori') kategoriFilter = '';
+    if (key === 'cert') certProjectFilter = false;
+    if (key === 'date') { dateFromFilter = ''; dateToFilter = ''; }
+    handleFilterOrSearch();
   }
+
+  function toggleFilter() {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      showMobileFilter = true;   // mobile -> modal
+    } else {
+      showSidebar = !showSidebar; // desktop -> show/hide sidebar
+    }
+  }
+
   function goToPage(page: number) { if (page > 0 && page <= lastPage) { currentPage = page; fetchProjects(); } }
 
   function openCreateModal() {
-    form = {
-      name:'', description:'', status:'', start_date:'', finish_date:'',
-      mitra_id:'', kategori:'', lokasi:'', no_po:'', no_so:'', is_cert_projects:false
-    };
+    form = { name:'', description:'', status:'', start_date:'', finish_date:'', mitra_id:'', kategori:'', lokasi:'', no_po:'', no_so:'', is_cert_projects:false };
     showCreateModal = true;
   }
   function openEditModal(project: any) {
@@ -169,6 +218,33 @@
     }
   }
 
+  // --- kunci scroll saat drawer filter mobile terbuka ---
+  function lockBodyScroll(lock: boolean) {
+    const body = document.body;
+    if (!body) return;
+    if (lock) {
+      const scrollY = window.scrollY;
+      body.dataset.scrollY = String(scrollY);
+      body.style.position = 'fixed';
+      body.style.top = `-${scrollY}px`;
+      body.style.left = '0';
+      body.style.right = '0';
+      body.style.overflow = 'hidden';
+      body.style.width = '100%';
+    } else {
+      const y = Number(body.dataset.scrollY || '0');
+      body.style.position = '';
+      body.style.top = '';
+      body.style.left = '';
+      body.style.right = '';
+      body.style.overflow = '';
+      body.style.width = '';
+      delete body.dataset.scrollY;
+      window.scrollTo(0, y);
+    }
+  }
+  $: lockBodyScroll(showMobileFilter || showDetailDrawer || showCreateModal || showEditModal);
+
   // Badge (selaras Dashboard)
   function getStatusBadgeClasses(status: string) {
     switch (status) {
@@ -187,263 +263,288 @@
         return 'bg-slate-500/20 text-slate-600 dark:text-slate-300';
     }
   }
+
+  // Chip aktif untuk ditampilkan di atas tabel
+  $: activeFilterChips = [
+    statusFilter ? { key: 'status', label: statusFilter } : null,
+    kategoriFilter ? { key: 'kategori', label: kategoriFilter } : null,
+    certProjectFilter ? { key: 'cert', label: 'Certificate' } : null,
+    (dateFromFilter || dateToFilter)
+      ? { key: 'date', label:
+          dateFromFilter && dateToFilter
+            ? `${new Date(dateFromFilter).toLocaleDateString('id-ID')} - ${new Date(dateToFilter).toLocaleDateString('id-ID')}`
+            : (dateFromFilter ? `Dari ${new Date(dateFromFilter).toLocaleDateString('id-ID')}` : `Sampai ${new Date(dateToFilter).toLocaleDateString('id-ID')}`) }
+      : null
+  ].filter(Boolean) as Array<{key:'status'|'kategori'|'cert'|'date'; label:string}>;
 </script>
 
 <svelte:head><title>Daftar Project - Indogreen</title></svelte:head>
 
-<!-- Filter bar -->
-<div class="flex flex-col sm:flex-row items-center justify-between mb-5 gap-3">
-  <div class="flex w-full sm:w-auto gap-2">
-    <select bind:value={statusFilter} on:change={handleFilterOrSearch}
-      class="px-3 py-2 rounded-xl text-sm font-medium border border-black/5 dark:border-white/10
-             bg-white/70 dark:bg-[#12101d]/70 backdrop-blur text-slate-800 dark:text-slate-100">
-      <option value="">Filter Status: Semua</option>
-      {#each projectStatuses as status}<option value={status}>{status}</option>{/each}
-    </select>
-
-    <select bind:value={kategoriFilter} on:change={handleFilterOrSearch}
-      class="px-3 py-2 rounded-xl text-sm font-medium border border-black/5 dark:border-white/10
-             bg-white/70 dark:bg-[#12101d]/70 backdrop-blur text-slate-800 dark:text-slate-100">
-      <option value="">Filter Kategori: Semua</option>
-      {#each projectKategoris as k}<option value={k}>{k}</option>{/each}
-    </select>
-
-    <label class="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium border border-black/5 dark:border-white/10
-                  bg-white/70 dark:bg-[#12101d]/70 backdrop-blur text-slate-800 dark:text-slate-100">
-      <input type="checkbox" bind:checked={certProjectFilter} on:change={handleFilterOrSearch}
-             class="h-4 w-4 rounded border-black/10 dark:border-white/10" />
-      <span>Certificate</span>
-    </label>
-  </div>
-
-  <div class="w-full sm:w-auto flex-grow">
-    <div class="relative">
-      <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-        <svg class="h-5 w-5 text-slate-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clip-rule="evenodd"/></svg>
-      </div>
-      <input type="text" placeholder="Cari project..." bind:value={search} on:input={handleFilterOrSearch}
-        class="block w-full pl-10 pr-3 py-2 rounded-xl text-sm border border-black/5 dark:border-white/10
-               bg-white/70 dark:bg-[#12101d]/70 backdrop-blur text-slate-800 placeholder-slate-500
-               dark:text-slate-100 dark:placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-violet-500" />
+<!-- ====== GRID 2 KOLOM: SIDEBAR + KONTEN ====== -->
+<div class={"grid grid-cols-1 gap-4 " + (showSidebar ? GRID_2COL : "")}>
+  <!-- KIRI: Sidebar filter (muncul hanya saat showSidebar true) -->
+  <!-- svelte-ignore a11y_no_redundant_roles -->
+  <aside
+    role="complementary"
+    aria-label="Filter"
+    class={"hidden " + (showSidebar ? "lg:block" : "lg:hidden")}
+  >
+    <!-- biarkan isi/komponen filter kamu; boleh sticky juga -->
+    <div class="sticky top-[72px]">
+      <ProjectFilterDesktop
+        statusOptions={projectStatuses}
+        kategoriOptions={projectKategoris}
+        statusValue={statusFilter}
+        kategoriValue={kategoriFilter}
+        certValue={certProjectFilter}
+        dateFrom={dateFromFilter}
+        dateTo={dateToFilter}
+        on:update={onDesktopUpdate}
+        on:clear={onDesktopClear}
+      />
     </div>
-  </div>
+  </aside>
 
-  <button on:click={openCreateModal}
-    class="px-4 py-2 w-full sm:w-auto rounded-xl text-sm font-semibold text-white bg-violet-600 hover:bg-violet-700 shadow-sm">
-    Tambah Project
-  </button>
-</div>
+  <!-- KANAN: konten utama -->
+  <section class="min-w-0">
+    <!-- sticky BAR hanya selebar kolom kanan -->
+    <div class="sticky z-30 pb-2 top-[60px] sm:top-[72px]">
+      <!-- ACTION BAR -->
+      <div class="mb-2 flex items-center gap-2 flex-nowrap
+                  bg-white/70 dark:bg-[#12101d]/70 backdrop-blur
+                  border border-black/5 dark:border-white/10
+                  rounded-xl px-2 py-2">
+        <!-- Kiri: Filter + toggle view -->
+        <div class="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            on:click={toggleFilter}
+            class="inline-flex items-center justify-center h-9 w-9 rounded-xl text-sm
+                   border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70
+                   text-slate-800 dark:text-slate-100 hover:bg-black/5 dark:hover:bg-white/5">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M6 12h12M10 18h4"/></svg>
+            <span class="sr-only">Filter</span>
+          </button>
 
-<!-- Switch + Date -->
-<div class="flex items-center justify-between mb-4">
-  <div class="bg-slate-100/70 dark:bg-white/5 border border-black/5 dark:border-white/10 rounded-xl inline-flex gap-1 p-1"
-       role="tablist" aria-label="Switch view" tabindex="0" on:keydown={handleViewKeydown}>
-    <button on:click={() => (activeView='table')}
-      class="grid h-9 w-9 place-items-center rounded-md text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-50"
-      class:bg-white={activeView==='table'} class:dark:bg-[#12101d]={activeView==='table'} class:shadow={activeView==='table'} title="Table">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="3.5" y="4.5" width="17" height="15" rx="2"></rect><line x1="3.5" y1="9" x2="20.5" y2="9"></line><line x1="3.5" y1="13" x2="20.5" y2="13"></line><line x1="3.5" y1="17" x2="20.5" y2="17"></line></svg>
-      <span class="sr-only">Tampilan Tabel</span>
-    </button>
-    <button on:click={() => (activeView='list')}
-      class="grid h-9 w-9 place-items-center rounded-md text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-50"
-      class:bg-white={activeView==='list'} class:dark:bg-[#12101d]={activeView==='list'} class:shadow={activeView==='list'} title="List">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="5" cy="6" r="1.3"></circle><circle cx="5" cy="12" r="1.3"></circle><circle cx="5" cy="18" r="1.3"></circle><line x1="9" y1="6" x2="20" y2="6"></line><line x1="9" y1="12" x2="20" y2="12"></line><line x1="9" y1="18" x2="20" y2="18"></line></svg>
-      <span class="sr-only">Tampilan List</span>
-    </button>
-  </div>
-
-  <div class="relative">
-    <button on:click={toggleDateFilter}
-      class="date-filter-button inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium
-             border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur
-             text-slate-800 dark:text-slate-100 hover:bg-black/5 dark:hover:bg-white/5">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-      <span>Filter Tanggal</span>
-      {#if dateFromFilter || dateToFilter}<div class="w-2 h-2 bg-violet-600 rounded-full"></div>{/if}
-      <svg class="w-4 h-4 transition-transform" class:rotate-180={showDateFilter} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-    </button>
-
-    {#if showDateFilter}
-      <div class="date-filter-dropdown absolute right-0 mt-2 w-80 rounded-2xl border border-black/5 dark:border-white/10
-                  bg-white/90 dark:bg-[#0e0c19]/90 backdrop-blur shadow-xl z-10 p-4">
-        <div class="space-y-3">
-          {#if dateFromFilter || dateToFilter}
-            <div class="text-xs text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-white/5 p-2 rounded-lg">
-              {#if dateFromFilter && dateToFilter}
-                {new Date(dateFromFilter).toLocaleDateString('id-ID')} - {new Date(dateToFilter).toLocaleDateString('id-ID')}
-              {:else if dateFromFilter}
-                Dari: {new Date(dateFromFilter).toLocaleDateString('id-ID')}
-              {:else if dateToFilter}
-                Sampai: {new Date(dateToFilter).toLocaleDateString('id-ID')}
-              {/if}
-            </div>
-          {/if}
-          <div class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-            Dari Tanggal
-            <input type="date" bind:value={dateFromFilter} on:change={handleFilterOrSearch}
-              class="w-full px-3 py-2 rounded-xl text-sm border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70" />
-          </div>
-          <div class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-            Sampai Tanggal
-            <input type="date" bind:value={dateToFilter} on:change={handleFilterOrSearch}
-              class="w-full px-3 py-2 rounded-xl text-sm border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70" />
-          </div>
-          <div class="flex gap-2 pt-2">
-            <button on:click={clearFilters}
-              class="flex-1 px-3 py-2 text-sm font-medium rounded-xl border border-black/5 dark:border-white/10 bg-slate-100 dark:bg-white/5">
-              Clear All
+          <div class="bg-slate-100/70 dark:bg-white/5 border border-black/5 dark:border-white/10 rounded-xl inline-flex"
+               role="tablist" aria-label="Switch view" tabindex="0" on:keydown={handleViewKeydown}>
+            <button on:click={() => (activeView='table')}
+              class="grid h-9 w-9 place-items-center rounded-xl text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-50"
+              class:bg-white={activeView==='table'} class:dark:bg-[#12101d]={activeView==='table'} class:shadow={activeView==='table'} title="Table">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="3.5" y="4.5" width="17" height="15" rx="2"></rect><line x1="3.5" y1="9" x2="20.5" y2="9"></line><line x1="3.5" y1="13" x2="20.5" y2="13"></line><line x1="3.5" y1="17" x2="20.5" y2="17"></line></svg>
+              <span class="sr-only">Tampilan Tabel</span>
             </button>
-            <button on:click={() => (showDateFilter=false)}
-              class="flex-1 px-3 py-2 text-sm font-medium rounded-xl text-white bg-violet-600 hover:bg-violet-700">
-              Close
+            <button on:click={() => (activeView='list')}
+              class="grid h-9 w-9 place-items-center rounded-xl text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-50"
+              class:bg-white={activeView==='list'} class:dark:bg-[#12101d]={activeView==='list'} class:shadow={activeView==='list'} title="List">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="5" cy="6" r="1.3"></circle><circle cx="5" cy="12" r="1.3"></circle><circle cx="5" cy="18" r="1.3"></circle><line x1="9" y1="6" x2="20" y2="6"></line><line x1="9" y1="12" x2="20" y2="12"></line><line x1="9" y1="18" x2="20" y2="18"></line></svg>
+              <span class="sr-only">Tampilan List</span>
             </button>
           </div>
         </div>
+
+        <!-- Kanan: Search + Tambah -->
+        <div class="flex items-center gap-2 flex-1 min-w-0">
+          <div class="relative flex-1 min-w-0">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg class="h-5 w-5 text-slate-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clip-rule="evenodd"/></svg>
+            </div>
+            <input type="text" placeholder="Cari project..." bind:value={search} on:input={handleFilterOrSearch}
+              class="block w-full pl-10 pr-3 h-9 rounded-xl text-sm border border-black/5 dark:border-white/10
+                     bg-white/70 dark:bg-[#12101d]/70 backdrop-blur text-slate-800 placeholder-slate-500
+                     dark:text-slate-100 dark:placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-violet-500" />
+          </div>
+          <button
+            on:click={openCreateModal}
+            class="h-9 w-9 bg-violet-600 hover:bg-violet-700 text-white rounded-xl shadow-sm transition-all duration-200 hover:scale-105 active:scale-95 grid place-items-center shrink-0"
+            aria-label="Tambah Project" title="Tambah Project">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+          </button>
+        </div>
       </div>
-    {/if}
-  </div>
+      <!-- CHIPS -->
+      {#if activeFilterChips.length}
+        <div class="flex items-center flex-wrap gap-2
+                    bg-white/70 dark:bg-[#12101d]/70 backdrop-blur
+                    border border-black/5 dark:border-white/10
+                    rounded-xl px-3 py-2 mb-2">
+          {#each activeFilterChips as chip}
+            <span class="inline-flex items-center gap-2 rounded-full border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur px-3 py-1 text-xs font-medium">
+              {chip.label}
+              <button type="button" aria-label="Hapus filter" class="opacity-70 hover:opacity-100" on:click={() => clearOneFilter(chip.key)}>✕</button>
+            </span>
+          {/each}
+          <button type="button" class="text-xs font-medium text-violet-700 dark:text-violet-300 hover:underline" on:click={clearFilters}>Clear</button>
+        </div>
+      {/if}
+    </div>
+
+    <!-- SECTION KONTEN DI BAWAH BAR -->
+    <div>
+      {#if loading}
+        <p class="text-slate-900 dark:text-slate-100">Memuat project...</p>
+      {:else if error}
+        <p class="text-rose-500">{error}</p>
+      {:else if projects.length === 0}
+        <div class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur p-5">
+          <p class="text-sm text-slate-600 dark:text-slate-300">Belum ada project.</p>
+        </div>
+      {:else}
+        {#if activeView === 'list'}
+          <!-- LIST VIEW -->
+          <div class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur shadow-sm">
+            <ul class="divide-y divide-slate-200/70 dark:divide-white/10">
+              {#each projects as project (project.id)}
+                <li>
+                  <a href={`/projects/${project.id}`} class="block hover:bg-violet-600/5 dark:hover:bg-white/5 px-4 py-4 sm:px-6">
+                    <div class="flex items-center justify-between">
+                      <p class="text-sm font-medium text-violet-700 dark:text-violet-300 truncate">{project.name}</p>
+                      <div class="ml-2 flex-shrink-0 flex gap-2">
+                        <span class={"inline-flex rounded-full px-2 py-0.5 text-xs font-semibold " + getStatusBadgeClasses(project.status)}>{project.status}</span>
+                        {#if project.is_cert_projects}
+                          <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold bg-violet-500/15 text-violet-700 dark:text-violet-300">Certificate</span>
+                        {/if}
+                      </div>
+                    </div>
+                    <div class="mt-2 sm:flex sm:justify-between">
+                      <p class="text-sm text-slate-600 dark:text-slate-300">
+                        Customer: {project.mitra?.nama || '-'} | Deskripsi: {project.description?.substring(0,50) || ''}{project.description?.length > 50 ? '...' : ''}
+                      </p>
+                      <p class="mt-2 sm:mt-0 inline-flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400">
+                        <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/></svg>
+                        Mulai: {new Date(project.start_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}
+                      </p>
+                    </div>
+                  </a>
+
+                  <div class="flex justify-end px-4 py-2 sm:px-6 gap-2">
+                    <button on:click|stopPropagation={() => openDetailDrawer(project)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700">Detail</button>
+                    <button on:click|stopPropagation={() => openEditModal(project)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700">Edit</button>
+                    <button on:click|stopPropagation={() => handleDelete(project.id)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700">Hapus</button>
+                  </div>
+                </li>
+              {/each}
+            </ul>
+
+            {#if projects.length > 0}
+              <Pagination
+                currentPage={currentPage}
+                lastPage={lastPage}
+                onPageChange={goToPage}
+                totalItems={totalProjects}
+                itemsPerPage={perPage}
+                perPageOptions={perPageOptions}
+                onPerPageChange={(n) => { perPage = n; currentPage = 1; fetchProjects(); }}
+              />
+            {/if}
+          </div>
+        {/if}
+
+        {#if activeView === 'table'}
+          <!-- TABLE VIEW -->
+          <div class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur shadow-sm">
+            <div class="rounded-xl overflow-x-auto">
+              <table class="min-w-full divide-y divide-slate-200/70 dark:divide-white/10">
+                <thead class="bg-slate-50/60 dark:bg-white/5">
+                  <tr>
+                    <th class="px-3 py-3.5 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Nama Project</th>
+                    <th class="px-3 py-3.5 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Lokasi</th>
+                    <th class="px-3 py-3.5 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Tahun</th>
+                    <th class="px-3 py-3.5 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Kategori</th>
+                    <th class="px-3 py-3.5 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Status</th>
+                    <th class="px-3 py-3.5 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Dilaksanakan</th>
+                    <th class="px-3 py-3.5 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200/70 dark:divide-white/10">
+                  {#each projects as project (project.id)}
+                    <tr>
+                      <td class="whitespace-nowrap px-3 py-4 text-sm font-medium text-slate-900 dark:text-slate-100">
+                        <a href={`/projects/${project.id}`} class="text-violet-700 dark:text-violet-300 hover:underline">{project.name}</a><br>
+                        <span class="text-xs text-slate-500 dark:text-slate-400">{project.mitra?.nama}</span>
+                      </td>
+                      <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-600 dark:text-slate-300">
+                        {project.lokasi?.substring(0, 40)}{project.lokasi?.length > 40 ? '...' : ''}
+                      </td>
+                      <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-600 dark:text-slate-300">
+                        {new Date(project.start_date).toLocaleDateString('id-ID', { year: 'numeric' })}
+                      </td>
+                      <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-600 dark:text-slate-300">{project.kategori || '-'}</td>
+                      <td class="whitespace-nowrap px-3 py-4 text-sm">
+                        <div class="flex items-center gap-2">
+                          <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold {getStatusBadgeClasses(project.status)}">{project.status}</span>
+                          {#if project.is_cert_projects}
+                            <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold bg-violet-500/15 text-violet-700 dark:text-violet-300">Certificate</span>
+                          {/if}
+                        </div>
+                      </td>
+                      <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-600 dark:text-slate-300">
+                        {new Date(project.start_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}<br>
+                        {#if project.finish_date}
+                          {new Date(project.finish_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        {:else}-{/if}
+                      </td>
+                      <td class="relative whitespace-nowrap px-3 py-4 text-sm">
+                        <div class="flex items-center gap-2">
+                          <button on:click={() => openDetailDrawer(project)} class="text-amber-600 hover:text-amber-700" title="Detail">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            <span class="sr-only">Detail, {project.name}</span>
+                          </button>
+                          <button on:click|stopPropagation={() => openEditModal(project)} title="Edit" class="text-violet-700 hover:text-violet-800 dark:text-violet-300 dark:hover:text-violet-200">
+                            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                            <span class="sr-only">Edit, {project.name}</span>
+                          </button>
+                          <button on:click|stopPropagation={() => handleDelete(project.id)} title="Delete" class="text-rose-600 hover:text-rose-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                            <span class="sr-only">Hapus, {project.name}</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+
+            {#if projects.length > 0}
+              <Pagination
+                currentPage={currentPage}
+                lastPage={lastPage}
+                onPageChange={goToPage}
+                totalItems={totalProjects}
+                itemsPerPage={perPage}
+                perPageOptions={perPageOptions}
+                onPerPageChange={(n) => { perPage = n; currentPage = 1; fetchProjects(); }}
+              />
+            {/if}
+          </div>
+        {/if}
+      {/if}
+    </div>
+  </section>
 </div>
 
-{#if loading}
-  <p class="text-slate-900 dark:text-slate-100">Memuat project...</p>
-{:else if error}
-  <p class="text-rose-500">{error}</p>
-{:else if projects.length === 0}
-  <div class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur p-5">
-    <p class="text-sm text-slate-600 dark:text-slate-300">Belum ada project.</p>
-  </div>
-{:else}
-  {#if activeView === 'list'}
-    <div class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur shadow-sm">
-      <ul class="divide-y divide-slate-200/70 dark:divide-white/10">
-        {#each projects as project (project.id)}
-          <li>
-            <a href={`/projects/${project.id}`}
-               class="block hover:bg-violet-600/5 dark:hover:bg-white/5 px-4 py-4 sm:px-6">
-              <div class="flex items-center justify-between">
-                <p class="text-sm font-medium text-violet-700 dark:text-violet-300 truncate">{project.name}</p>
-                <div class="ml-2 flex-shrink-0 flex gap-2">
-                  <span class={"inline-flex rounded-full px-2 py-0.5 text-xs font-semibold " + getStatusBadgeClasses(project.status)}>{project.status}</span>
-                  {#if project.is_cert_projects}
-                    <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold bg-violet-500/15 text-violet-700 dark:text-violet-300">Certificate</span>
-                  {/if}
-                </div>
-              </div>
-              <div class="mt-2 sm:flex sm:justify-between">
-                <p class="text-sm text-slate-600 dark:text-slate-300">
-                  Customer: {project.mitra?.nama || '-'} | Deskripsi: {project.description?.substring(0,50) || ''}{project.description?.length > 50 ? '...' : ''}
-                </p>
-                <p class="mt-2 sm:mt-0 inline-flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400">
-                  <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/></svg>
-                  Mulai: {new Date(project.start_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}
-                </p>
-              </div>
-            </a>
-
-            <div class="flex justify-end px-4 py-2 sm:px-6 gap-2">
-              <button on:click|stopPropagation={() => openDetailDrawer(project)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700">Detail</button>
-              <button on:click|stopPropagation={() => openEditModal(project)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700">Edit</button>
-              <button on:click|stopPropagation={() => handleDelete(project.id)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700">Hapus</button>
-            </div>
-          </li>
-        {/each}
-      </ul>
-
-      {#if projects.length > 0}
-        <Pagination
-          currentPage={currentPage}
-          lastPage={lastPage}
-          onPageChange={goToPage}
-          totalItems={totalProjects}
-          itemsPerPage={perPage}
-          perPageOptions={perPageOptions}
-          onPerPageChange={(n) => { perPage = n; currentPage = 1; fetchProjects(); }}
-        />
-      {/if}
-    </div>
-  {/if}
-
-  {#if activeView === 'table'}
-    <div class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur shadow-sm">
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-slate-200/70 dark:divide-white/10">
-          <thead class="bg-slate-50/60 dark:bg-white/5">
-            <tr>
-              <th class="px-3 py-3.5 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Nama Project</th>
-              <th class="px-3 py-3.5 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Lokasi</th>
-              <th class="px-3 py-3.5 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Tahun</th>
-              <th class="px-3 py-3.5 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Kategori</th>
-              <th class="px-3 py-3.5 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Status</th>
-              <th class="px-3 py-3.5 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Dilaksanakan</th>
-              <th class="px-3 py-3.5 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Aksi</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-200/70 dark:divide-white/10">
-            {#each projects as project (project.id)}
-              <tr>
-                <td class="whitespace-nowrap px-3 py-4 text-sm font-medium text-slate-900 dark:text-slate-100">
-                  <a href={`/projects/${project.id}`} class="text-violet-700 dark:text-violet-300 hover:underline">{project.name}</a><br>
-                  <span class="text-xs text-slate-500 dark:text-slate-400">{project.mitra?.nama}</span>
-                </td>
-                <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-600 dark:text-slate-300">
-                  {project.lokasi?.substring(0, 40)}{project.lokasi?.length > 40 ? '...' : ''}
-                </td>
-                <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-600 dark:text-slate-300">
-                  {new Date(project.start_date).toLocaleDateString('id-ID', { year: 'numeric' })}
-                </td>
-                <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-600 dark:text-slate-300">{project.kategori || '-'}</td>
-                <td class="whitespace-nowrap px-3 py-4 text-sm">
-                  <div class="flex items-center gap-2">
-                    <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold {getStatusBadgeClasses(project.status)}">{project.status}</span>
-                    {#if project.is_cert_projects}
-                      <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold bg-violet-500/15 text-violet-700 dark:text-violet-300">Certificate</span>
-                    {/if}
-                  </div>
-                </td>
-                <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-600 dark:text-slate-300">
-                  {new Date(project.start_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}<br>
-                  {#if project.finish_date}
-                    {new Date(project.finish_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
-                  {:else}-{/if}
-                </td>
-                <td class="relative whitespace-nowrap px-3 py-4 text-sm">
-                  <div class="flex items-center gap-2">
-                    <button on:click={() => openDetailDrawer(project)} class="text-amber-600 hover:text-amber-700" title="Detail">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                      <span class="sr-only">Detail, {project.name}</span>
-                    </button>
-                    <button on:click|stopPropagation={() => openEditModal(project)} title="Edit" class="text-violet-700 hover:text-violet-800 dark:text-violet-300 dark:hover:text-violet-200">
-                      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                      <span class="sr-only">Edit, {project.name}</span>
-                    </button>
-                    <button on:click|stopPropagation={() => handleDelete(project.id)} title="Delete" class="text-rose-600 hover:text-rose-700">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                      <span class="sr-only">Hapus, {project.name}</span>
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            {/each}
-          </tbody>
-        </table>
-      </div>
-
-      {#if projects.length > 0}
-        <Pagination
-          currentPage={currentPage}
-          lastPage={lastPage}
-          onPageChange={goToPage}
-          totalItems={totalProjects}
-          itemsPerPage={perPage}
-          perPageOptions={perPageOptions}
-          onPerPageChange={(n) => { perPage = n; currentPage = 1; fetchProjects(); }}
-        />
-      {/if}
-    </div>
-  {/if}
+<!-- ====== MODAL FILTER (MOBILE) ====== -->
+{#if showMobileFilter}
+  <ProjectFilterMobile
+    bind:open={showMobileFilter}
+    statusOptions={projectStatuses}
+    kategoriOptions={projectKategoris}
+    statusValue={statusFilter}
+    kategoriValue={kategoriFilter}
+    certValue={certProjectFilter}
+    dateFrom={dateFromFilter}
+    dateTo={dateToFilter}
+    on:update={onMobileUpdate}
+    on:clear={onMobileClear}
+    on:apply={onMobileApply}
+    on:close={() => (showMobileFilter = false)}
+  />
 {/if}
 
-<!-- Modals -->
+<!-- ====== MODALS / DRAWER ====== -->
 <ProjectFormModal
   bind:show={showCreateModal}
   title="Form Project Baru"
@@ -470,7 +571,6 @@
   />
 {/if}
 
-<!-- Drawer detail -->
 <Drawer bind:show={showDetailDrawer} title="Detail Project" on:close={() => (showDetailDrawer = false)}>
   <ProjectDetail project={selectedProject} />
 </Drawer>
