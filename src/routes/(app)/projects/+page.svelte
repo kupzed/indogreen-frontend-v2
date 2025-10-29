@@ -40,8 +40,6 @@
   let showSidebar = false;        // desktop toggle
   let showMobileFilter = false;  // mobile modal
 
-  const GRID_2COL = 'lg:grid-cols-[260px_minmax(0,1fr)]';
-
   function applyUpdate(key: 'status'|'kategori'|'cert'|'dateFrom'|'dateTo', value: any) {
     if (key === 'status') statusFilter = value as string;
     if (key === 'kategori') kategoriFilter = value as string;
@@ -281,61 +279,65 @@
 <svelte:head><title>Daftar Project - Indogreen</title></svelte:head>
 
 <!-- ====== GRID 2 KOLOM: SIDEBAR + KONTEN ====== -->
-<div class={"grid grid-cols-1 gap-4 " + (showSidebar ? GRID_2COL : "")}>
+<div class={"grid grid-cols-1 gap-4 " + (showSidebar ? "lg:grid-cols-[260px_minmax(0,1fr)]" : "")}>
   <!-- KIRI: Sidebar filter (muncul hanya saat showSidebar true) -->
   <!-- svelte-ignore a11y_no_redundant_roles -->
+  <!-- KIRI: Sidebar filter (muncul hanya saat showSidebar true) -->
   <aside
     role="complementary"
     aria-label="Filter"
     class={"hidden " + (showSidebar ? "lg:block" : "lg:hidden")}
   >
-    <!-- biarkan isi/komponen filter kamu; boleh sticky juga -->
+    <!-- Tetap melekat di bawah navbar -->
     <div class="sticky top-[72px]">
-      <ProjectFilterDesktop
-        statusOptions={projectStatuses}
-        kategoriOptions={projectKategoris}
-        statusValue={statusFilter}
-        kategoriValue={kategoriFilter}
-        certValue={certProjectFilter}
-        dateFrom={dateFromFilter}
-        dateTo={dateToFilter}
-        on:update={onDesktopUpdate}
-        on:clear={onDesktopClear}
-      />
+      <!-- Tinggi kolom = tinggi viewport - navbar(72) - padding main(48) -->
+      <div class="max-h-[calc(100dvh-72px-48px)] overflow-y-auto overscroll-contain [@supports(-webkit-overflow-scrolling:touch)]:[-webkit-overflow-scrolling:touch]">
+        <ProjectFilterDesktop
+          statusOptions={projectStatuses}
+          kategoriOptions={projectKategoris}
+          statusValue={statusFilter}
+          kategoriValue={kategoriFilter}
+          certValue={certProjectFilter}
+          dateFrom={dateFromFilter}
+          dateTo={dateToFilter}
+          on:update={onDesktopUpdate}
+          on:clear={onDesktopClear}
+        />
+      </div>
     </div>
   </aside>
 
+
   <!-- KANAN: konten utama -->
-  <section class="min-w-0">
+  <section class="min-w-0 flex flex-col min-h-[calc(100dvh-60px-48px)] sm:min-h-[calc(100dvh-72px-48px)]">
     <!-- sticky BAR hanya selebar kolom kanan -->
-    <div class="sticky z-30 pb-2 top-[60px] sm:top-[72px]">
+    <div class="border border-black/5 dark:border-white/10 divide-y divide-black/5 dark:divide-white/10 mb-4 sticky z-30 top-[60px] sm:top-[72px]">
       <!-- ACTION BAR -->
-      <div class="mb-2 flex items-center gap-2 flex-nowrap
+      <div class="flex items-center gap-2 flex-nowrap
                   bg-white/70 dark:bg-[#12101d]/70 backdrop-blur
-                  border border-black/5 dark:border-white/10
-                  rounded-xl px-2 py-2">
+                  px-2 py-2">
         <!-- Kiri: Filter + toggle view -->
         <div class="flex items-center gap-2 shrink-0">
           <button
             type="button"
             on:click={toggleFilter}
-            class="inline-flex items-center justify-center h-9 w-9 rounded-xl text-sm
+            class="inline-flex items-center justify-center h-9 w-9 rounded-md text-sm
                    border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70
                    text-slate-800 dark:text-slate-100 hover:bg-black/5 dark:hover:bg-white/5">
             <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M6 12h12M10 18h4"/></svg>
             <span class="sr-only">Filter</span>
           </button>
 
-          <div class="bg-slate-100/70 dark:bg-white/5 border border-black/5 dark:border-white/10 rounded-xl inline-flex"
+          <div class="bg-slate-100/70 dark:bg-white/5 border border-black/5 dark:border-white/10 rounded-md inline-flex"
                role="tablist" aria-label="Switch view" tabindex="0" on:keydown={handleViewKeydown}>
             <button on:click={() => (activeView='table')}
-              class="grid h-9 w-9 place-items-center rounded-xl text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-50"
+              class="grid h-9 w-9 place-items-center rounded-md text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-50"
               class:bg-white={activeView==='table'} class:dark:bg-[#12101d]={activeView==='table'} class:shadow={activeView==='table'} title="Table">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="3.5" y="4.5" width="17" height="15" rx="2"></rect><line x1="3.5" y1="9" x2="20.5" y2="9"></line><line x1="3.5" y1="13" x2="20.5" y2="13"></line><line x1="3.5" y1="17" x2="20.5" y2="17"></line></svg>
               <span class="sr-only">Tampilan Tabel</span>
             </button>
             <button on:click={() => (activeView='list')}
-              class="grid h-9 w-9 place-items-center rounded-xl text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-50"
+              class="grid h-9 w-9 place-items-center rounded-md text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-50"
               class:bg-white={activeView==='list'} class:dark:bg-[#12101d]={activeView==='list'} class:shadow={activeView==='list'} title="List">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="5" cy="6" r="1.3"></circle><circle cx="5" cy="12" r="1.3"></circle><circle cx="5" cy="18" r="1.3"></circle><line x1="9" y1="6" x2="20" y2="6"></line><line x1="9" y1="12" x2="20" y2="12"></line><line x1="9" y1="18" x2="20" y2="18"></line></svg>
               <span class="sr-only">Tampilan List</span>
@@ -350,13 +352,13 @@
               <svg class="h-5 w-5 text-slate-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clip-rule="evenodd"/></svg>
             </div>
             <input type="text" placeholder="Cari project..." bind:value={search} on:input={handleFilterOrSearch}
-              class="block w-full pl-10 pr-3 h-9 rounded-xl text-sm border border-black/5 dark:border-white/10
+              class="block w-full pl-10 pr-3 h-9 rounded-md text-sm border border-black/5 dark:border-white/10
                      bg-white/70 dark:bg-[#12101d]/70 backdrop-blur text-slate-800 placeholder-slate-500
                      dark:text-slate-100 dark:placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-violet-500" />
           </div>
           <button
             on:click={openCreateModal}
-            class="h-9 w-9 bg-violet-600 hover:bg-violet-700 text-white rounded-xl shadow-sm transition-all duration-200 hover:scale-105 active:scale-95 grid place-items-center shrink-0"
+            class="h-9 w-9 bg-violet-600 hover:bg-violet-700 text-white rounded-md shadow-sm transition-all duration-200 hover:scale-105 active:scale-95 grid place-items-center shrink-0"
             aria-label="Tambah Project" title="Tambah Project">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -368,8 +370,7 @@
       {#if activeFilterChips.length}
         <div class="flex items-center flex-wrap gap-2
                     bg-white/70 dark:bg-[#12101d]/70 backdrop-blur
-                    border border-black/5 dark:border-white/10
-                    rounded-xl px-3 py-2 mb-2">
+                    px-3 py-2">
           {#each activeFilterChips as chip}
             <span class="inline-flex items-center gap-2 rounded-full border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur px-3 py-1 text-xs font-medium">
               {chip.label}
@@ -382,19 +383,19 @@
     </div>
 
     <!-- SECTION KONTEN DI BAWAH BAR -->
-    <div>
+    <div class="flex-1 min-h-0 overflow-y-auto overscroll-contain">
       {#if loading}
         <p class="text-slate-900 dark:text-slate-100">Memuat project...</p>
       {:else if error}
         <p class="text-rose-500">{error}</p>
       {:else if projects.length === 0}
-        <div class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur p-5">
+        <div class="border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur p-5">
           <p class="text-sm text-slate-600 dark:text-slate-300">Belum ada project.</p>
         </div>
       {:else}
         {#if activeView === 'list'}
           <!-- LIST VIEW -->
-          <div class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur shadow-sm">
+          <div class="border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur shadow-sm">
             <ul class="divide-y divide-slate-200/70 dark:divide-white/10">
               {#each projects as project (project.id)}
                 <li>
@@ -444,8 +445,8 @@
 
         {#if activeView === 'table'}
           <!-- TABLE VIEW -->
-          <div class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur shadow-sm">
-            <div class="rounded-xl overflow-x-auto">
+          <div class="border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur shadow-sm">
+            <div class="overflow-x-auto">
               <table class="min-w-full divide-y divide-slate-200/70 dark:divide-white/10">
                 <thead class="bg-slate-50/60 dark:bg-white/5">
                   <tr>

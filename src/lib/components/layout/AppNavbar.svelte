@@ -153,7 +153,7 @@
 <!-- Top bar -->
 <div bind:this={navEl} class="sticky top-0 z-50" role="banner">
   <div class="backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:supports-[backdrop-filter]:bg-[#0b0617]/70 bg-white/90 dark:bg-[#0b0617]/90 border-b border-black/5 dark:border-white/10">
-    <nav class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <nav class="mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex h-[64px] items-center justify-between gap-2">
         <!-- Left block: logo + links (desktop) -->
         <div class="flex items-center gap-3 min-w-0" bind:this={leftEl}>
@@ -277,7 +277,7 @@
           <span class="font-semibold tracking-wide text-violet-700 dark:text-violet-300">INDOGREEN</span>
           <button
             type="button"
-            class="inline-flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 mr-1.5 sm:mr-2 rounded-xl border border-black/5 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/60"
+            class="inline-flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-xl border border-black/5 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/60"
             on:click={() => (showMobile = false)}
             aria-label="Close menu"
             title="Tutup"

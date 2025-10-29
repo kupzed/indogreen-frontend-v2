@@ -3,7 +3,7 @@
   import { slide } from 'svelte/transition';
 
   export let title: string;
-  export let startOpen = false;
+  export let startOpen = true;
   export let showClear = false;
 
   const dispatch = createEventDispatcher<{ clear: void }>();

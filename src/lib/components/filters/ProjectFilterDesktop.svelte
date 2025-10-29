@@ -20,7 +20,7 @@
   }
 </script>
 
-<div class="sticky top-[72px] space-y-4 rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur p-4">
+<div class="sticky top-[72px] space-y-4 border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur p-4">
   <!-- Status -->
   <FilterSection title="Status" showClear={!!statusValue} on:clear={() => update('status','')}>
     <div class="flex flex-wrap gap-2">
