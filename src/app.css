@@ -46,6 +46,17 @@ html {
 html {
 	scrollbar-width: thin; /* auto | thin | none */
 	scrollbar-color: var(--sb-thumb) var(--sb-track); /* thumb | track */
+
+	/* Sembunyikan scrollbar untuk Chrome, Safari dan Opera */
+	.no-scrollbar::-webkit-scrollbar {
+		display: none;
+	}
+
+	/* Sembunyikan scrollbar untuk IE, Edge dan Firefox */
+	.no-scrollbar {
+		-ms-overflow-style: none; /* IE and Edge */
+		scrollbar-width: none; /* Firefox */
+	}
 }
 
 /* WebKit (Chromium, Safari) */
