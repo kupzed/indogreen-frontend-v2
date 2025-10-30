@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import FilterSection from './FilterSection.svelte';
+  import { fly, fade } from 'svelte/transition';
 
   export let open = false;
 
@@ -26,9 +27,18 @@
 
 {#if open}
   <div class="fixed inset-0 z-50" role="dialog" aria-modal="true">
-    <button class="absolute inset-0 bg-black/50" on:click={() => dispatch('close')} aria-label="Tutup"></button>
+    <button
+      transition:fade={{ duration: 250 }}
+      class="absolute inset-0 bg-black/50"
+      on:click={() => dispatch('close')}
+      aria-label="Tutup"
+    ></button>
 
-    <div class="absolute bottom-0 left-0 right-0 rounded-t-2xl border border-black/5 dark:border-white/10 bg-white/90 dark:bg-[#0e0c19]/90 backdrop-blur p-4 max-h-[85vh] overflow-y-auto overscroll-contain">
+    <div
+      in:fly={{ y: 300, duration: 300, opacity: 0 }}
+      out:fly={{ y: 300, duration: 250, opacity: 0 }}
+      class="absolute bottom-0 left-0 right-0 rounded-t-2xl border border-black/5 dark:border-white/10 bg-white/90 dark:bg-[#0e0c19]/90 backdrop-blur p-4 max-h-[85vh] overflow-y-auto overscroll-contain"
+    >
       <div class="flex items-center justify-between mb-2">
         <h3 class="font-semibold">Filters</h3>
         <button class="h-9 w-9 grid place-items-center rounded-xl border border-black/5 dark:border-white/10" on:click={() => dispatch('close')} aria-label="Tutup">✕</button>

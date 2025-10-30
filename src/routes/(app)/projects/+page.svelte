@@ -282,7 +282,6 @@
 <div class={"grid grid-cols-1 gap-4 " + (showSidebar ? "lg:grid-cols-[260px_minmax(0,1fr)]" : "")}>
   <!-- KIRI: Sidebar filter (muncul hanya saat showSidebar true) -->
   <!-- svelte-ignore a11y_no_redundant_roles -->
-  <!-- KIRI: Sidebar filter (muncul hanya saat showSidebar true) -->
   <aside
     role="complementary"
     aria-label="Filter"
@@ -291,7 +290,7 @@
     <!-- Tetap melekat di bawah navbar -->
     <div class="sticky top-[72px]">
       <!-- Tinggi kolom = tinggi viewport - navbar(72) - padding main(48) -->
-      <div class="max-h-[calc(100dvh-72px-48px)] overflow-y-auto overscroll-contain [@supports(-webkit-overflow-scrolling:touch)]:[-webkit-overflow-scrolling:touch]">
+      <div class="max-h-[calc(100dvh-72px-48px)] overflow-y-auto overscroll-contain no-scrollbar [@supports(-webkit-overflow-scrolling:touch)]:[-webkit-overflow-scrolling:touch]">
         <ProjectFilterDesktop
           statusOptions={projectStatuses}
           kategoriOptions={projectKategoris}
@@ -311,7 +310,7 @@
   <!-- KANAN: konten utama -->
   <section class="min-w-0 flex flex-col min-h-[calc(100dvh-60px-48px)] sm:min-h-[calc(100dvh-72px-48px)]">
     <!-- sticky BAR hanya selebar kolom kanan -->
-    <div class="border border-black/5 dark:border-white/10 divide-y divide-black/5 dark:divide-white/10 mb-4 sticky z-30 top-[60px] sm:top-[72px]">
+    <div class="border border-black/5 dark:border-white/10 divide-y divide-black/5 dark:divide-white/10 sticky z-30 top-[60px] sm:top-[72px]">
       <!-- ACTION BAR -->
       <div class="flex items-center gap-2 flex-nowrap
                   bg-white/70 dark:bg-[#12101d]/70 backdrop-blur
@@ -319,13 +318,23 @@
         <!-- Kiri: Filter + toggle view -->
         <div class="flex items-center gap-2 shrink-0">
           <button
-            type="button"
-            on:click={toggleFilter}
-            class="inline-flex items-center justify-center h-9 w-9 rounded-md text-sm
-                   border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70
-                   text-slate-800 dark:text-slate-100 hover:bg-black/5 dark:hover:bg-white/5">
-            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M6 12h12M10 18h4"/></svg>
-            <span class="sr-only">Filter</span>
+              type="button"
+              on:click={toggleFilter}
+              class="inline-flex items-center justify-center h-9 w-9 rounded-md text-sm
+                    border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70
+                    text-slate-800 dark:text-slate-100 hover:bg-black/5 dark:hover:bg-white/5 transition-colors
+                    {showSidebar ? 'lg:bg-violet-500/15 dark:lg:bg-violet-400/15' : ''}"
+          >
+              {#if showSidebar}
+                  <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
+                  </svg>
+              {:else}
+                  <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M4 6h16M6 12h12M10 18h4"/>
+                  </svg>
+              {/if}
+              <span class="sr-only">Filter</span>
           </button>
 
           <div class="bg-slate-100/70 dark:bg-white/5 border border-black/5 dark:border-white/10 rounded-md inline-flex"
@@ -385,11 +394,11 @@
     <!-- SECTION KONTEN DI BAWAH BAR -->
     <div class="flex-1 min-h-0 overflow-y-auto overscroll-contain">
       {#if loading}
-        <p class="text-slate-900 dark:text-slate-100">Memuat project...</p>
+        <p class="mt-4 text-slate-900 dark:text-slate-100">Memuat project...</p>
       {:else if error}
-        <p class="text-rose-500">{error}</p>
+        <p class="mt-4 text-rose-500">{error}</p>
       {:else if projects.length === 0}
-        <div class="border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur p-5">
+        <div class="mt-4 border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur p-5">
           <p class="text-sm text-slate-600 dark:text-slate-300">Belum ada project.</p>
         </div>
       {:else}
@@ -445,10 +454,10 @@
 
         {#if activeView === 'table'}
           <!-- TABLE VIEW -->
-          <div class="border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur shadow-sm">
+          <div class="px-4 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur shadow-sm">
             <div class="overflow-x-auto">
               <table class="min-w-full divide-y divide-slate-200/70 dark:divide-white/10">
-                <thead class="bg-slate-50/60 dark:bg-white/5">
+                <thead>
                   <tr>
                     <th class="px-3 py-3.5 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Nama Project</th>
                     <th class="px-3 py-3.5 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">Lokasi</th>
