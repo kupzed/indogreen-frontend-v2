@@ -318,23 +318,29 @@
         <!-- Kiri: Filter + toggle view -->
         <div class="flex items-center gap-2 shrink-0">
           <button
-              type="button"
-              on:click={toggleFilter}
-              class="inline-flex items-center justify-center h-9 w-9 rounded-md text-sm
-                    border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70
-                    text-slate-800 dark:text-slate-100 hover:bg-black/5 dark:hover:bg-white/5 transition-colors
-                    {showSidebar ? 'lg:bg-violet-500/15 dark:lg:bg-violet-400/15' : ''}"
+            type="button"
+            on:click={toggleFilter}
+            class="inline-flex items-center justify-center h-9 w-9 rounded-md text-sm
+                  border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70
+                  text-slate-800 dark:text-slate-100 hover:bg-black/5 dark:hover:bg-white/5 transition-colors
+                  {showSidebar ? 'lg:bg-violet-500/15 dark:lg:bg-violet-400/15' : ''}"
+            aria-label="Filter"
           >
-              {#if showSidebar}
-                  <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
-                  </svg>
-              {:else}
-                  <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M4 6h16M6 12h12M10 18h4"/>
-                  </svg>
-              {/if}
-              <span class="sr-only">Filter</span>
+            {#if showSidebar}
+              <svg class="w-5 h-5 hidden lg:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
+              </svg>
+
+              <svg class="w-5 h-5 lg:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 6h16M6 12h12M10 18h4"/>
+              </svg>
+
+            {:else}
+              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 6h16M6 12h12M10 18h4"/>
+              </svg>
+            {/if}
+            <span class="sr-only">Filter</span>
           </button>
 
           <div class="bg-slate-100/70 dark:bg-white/5 border border-black/5 dark:border-white/10 rounded-md inline-flex"
