@@ -37,7 +37,7 @@
   }
 
   // sidebar & mobile modal
-  let showSidebar = false;        // desktop toggle
+  let showSidebar = true;        // desktop toggle
   let showMobileFilter = false;  // mobile modal
 
   function applyUpdate(key: 'status'|'kategori'|'cert'|'dateFrom'|'dateTo', value: any) {
@@ -322,8 +322,7 @@
             on:click={toggleFilter}
             class="inline-flex items-center justify-center h-9 w-9 rounded-md text-sm
                   border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70
-                  text-slate-800 dark:text-slate-100 hover:bg-black/5 dark:hover:bg-white/5 transition-colors
-                  {showSidebar ? 'lg:bg-violet-500/15 dark:lg:bg-violet-400/15' : ''}"
+                  text-slate-800 dark:text-slate-100 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
             aria-label="Filter"
           >
             {#if showSidebar}
@@ -364,7 +363,9 @@
         <div class="flex items-center gap-2 flex-1 min-w-0">
           <div class="relative flex-1 min-w-0">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg class="h-5 w-5 text-slate-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clip-rule="evenodd"/></svg>
+              <svg class="h-5 w-5 text-black dark:text-white" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clip-rule="evenodd"/>
+              </svg>
             </div>
             <input type="text" placeholder="Cari project..." bind:value={search} on:input={handleFilterOrSearch}
               class="block w-full pl-10 pr-3 h-9 rounded-md text-sm border border-black/5 dark:border-white/10
