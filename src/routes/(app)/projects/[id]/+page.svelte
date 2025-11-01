@@ -117,6 +117,7 @@
       const url = `/projects/${pid}?${qs({
         jenis: activityJenisFilter,
         kategori: activityKategoriFilter,
+        mitra_id: activityJenisFilter === 'Vendor' && activityVendorFilter ? activityVendorFilter : undefined,
         search: activitySearch,
         date_from: activityDateFromFilter,
         date_to: activityDateToFilter,
@@ -131,6 +132,7 @@
       activityCurrentPage = data.activity_pagination?.current_page ?? 1;
       activityLastPage    = data.activity_pagination?.last_page   ?? 1;
       totalActivities     = data.activity_pagination?.total       ?? (Array.isArray(activities) ? activities.length : 0);
+      projectVendorOptions = Array.isArray(data.vendor_options) ? data.vendor_options : [];
     } catch (err: any) {
       errorActivities = err?.message || 'Gagal memuat aktivitas.';
     } finally {
@@ -143,6 +145,7 @@
   function clearActivityFilters() {
     activityJenisFilter = '';
     activityKategoriFilter = '';
+    activityVendorFilter = '';
     activitySearch = '';
     activityDateFromFilter = '';
     activityDateToFilter = '';
@@ -182,6 +185,10 @@
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
   });
+
+  // Vendor filter state
+  let activityVendorFilter: number | string = '';
+  let projectVendorOptions: Array<{ id: number; nama: string }> = [];
 
   // ===== Edit Project =====
   let showEditProjectModal = false;
@@ -341,6 +348,11 @@
     else                                              createActivityForm.mitra_id = '';
   }
   $: if (!showCreateActivityModal) { createActivityForm.mitra_id = ''; createActivityForm.jenis = ''; previousCreateActivityJenis = ''; }
+
+  // Vendor filter
+  $: if (activityJenisFilter !== 'Vendor') {
+    activityVendorFilter = '';
+  }
 
   // List referensi
   const activityKategoriList = ['Expense Report','Invoice','Purchase Order','Payment','Quotation','Faktur Pajak','Kasbon','Laporan Teknis','Surat Masuk','Surat Keluar','Kontrak'];
@@ -620,6 +632,18 @@
               <option value="">Filter Jenis: Semua</option>
               {#each activityJenisList as jenis}<option value={jenis}>{jenis}</option>{/each}
             </select>
+            {#if activityJenisFilter === 'Vendor'}
+              <select
+                bind:value={activityVendorFilter}
+                on:change={handleActivityFilterOrSearch}
+                class="px-3 py-2 rounded-xl text-sm font-medium border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70"
+              >
+                <option value="">Filter Vendor: Semua</option>
+                {#each projectVendorOptions as v}
+                  <option value={v.id}>{v.nama}</option>
+                {/each}
+              </select>
+            {/if}
             <select bind:value={activityKategoriFilter} on:change={handleActivityFilterOrSearch}
               class="px-3 py-2 rounded-xl text-sm font-medium border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70">
               <option value="">Filter Kategori: Semua</option>
@@ -1088,31 +1112,67 @@
       form={editProjectForm} {customers} {projectStatuses} {projectKategoris} onSubmit={handleSubmitUpdateProject} />
   {/if}
 
-  <ActivityFormModal bind:show={showCreateActivityModal} title="Form Tambah Aktivitas" submitLabel="Tambah Aktivitas"
-    idPrefix="create_activity" form={createActivityForm} projects={project ? [project] : []} showProjectSelect={false}
-    {vendors} bind:currentFileName={createActivityFileName} allowRemoveAttachment={false} onSubmit={handleSubmitCreateActivity} />
+  <ActivityFormModal
+      bind:show={showCreateActivityModal}
+      title="Form Tambah Aktivitas"
+      submitLabel="Tambah Aktivitas"
+      idPrefix="create_activity"
+      form={createActivityForm}
+      projects={project ? [project] : []}
+      showProjectSelect={false}
+      {vendors}
+      allowRemoveAttachment={false}
+      onSubmit={handleSubmitCreateActivity}
+    />
 
-  {#if editingActivity}
-    <ActivityFormModal bind:show={showEditActivityModal} title="Edit Aktivitas" submitLabel="Update Aktivitas"
-      idPrefix="edit_activity" form={editActivityForm} projects={project ? [project] : []} showProjectSelect={false}
-      {vendors} bind:currentFileName={editActivityFileName} allowRemoveAttachment={true} onSubmit={handleSubmitUpdateActivity} />
-  {/if}
+    {#if editingActivity}
+      <ActivityFormModal
+        bind:show={showEditActivityModal}
+        title="Edit Aktivitas"
+        submitLabel="Update Aktivitas"
+        idPrefix="edit_activity"
+        form={editActivityForm}
+        projects={project ? [project] : []}
+        showProjectSelect={false}
+        {vendors}
+        allowRemoveAttachment={true}
+        onSubmit={handleSubmitUpdateActivity}
+      />
+    {/if}
 
   <Drawer bind:show={showActivityDetailDrawer} title="Detail Activity" on:close={() => (showActivityDetailDrawer = false)}>
     <ActivityDetail activity={selectedActivity} />
   </Drawer>
 
-  {#if showCreateCertificateModal}
-    <CertificateFormModal bind:show={showCreateCertificateModal} title="Tambah Sertifikat" submitLabel="Simpan" idPrefix="create_cert"
-      form={certificateForm} projects={[]} barangOptions={certificateBarangOptions} statuses={Array.from(certificateStatuses)}
-      bind:currentFileName={certificateFormFileName} allowRemoveAttachment={true} showProjectSelect={false} onSubmit={handleSubmitCreateCertificate} />
-  {/if}
+  <CertificateFormModal
+      bind:show={showCreateCertificateModal}
+      title="Tambah Sertifikat"
+      submitLabel="Simpan"
+      idPrefix="create_cert"
+      form={certificateForm}
+      projects={[]}
+      barangOptions={certificateBarangOptions}
+      statuses={Array.from(certificateStatuses)}
+      allowRemoveAttachment={true}
+      showProjectSelect={false}
+      onSubmit={handleSubmitCreateCertificate}
+    />
 
-  {#if editingCertificate}
-    <CertificateFormModal bind:show={showEditCertificateModal} title="Edit Sertifikat" submitLabel="Update" idPrefix="edit_cert"
-      form={certificateForm} projects={[]} barangOptions={certificateBarangOptions} statuses={Array.from(certificateStatuses)}
-      bind:currentFileName={certificateFormFileName} allowRemoveAttachment={true} showProjectSelect={false} onSubmit={handleSubmitUpdateCertificate} />
-  {/if}
+    {#if editingCertificate}
+      <CertificateFormModal
+        bind:show={showEditCertificateModal}
+        title="Edit Sertifikat"
+        submitLabel="Update"
+        idPrefix="edit_cert"
+        form={certificateForm}
+        projects={[]}
+        barangOptions={certificateBarangOptions}
+        statuses={Array.from(certificateStatuses)}
+        allowRemoveAttachment={true}
+        showProjectSelect={false}
+        onSubmit={handleSubmitUpdateCertificate}
+      />
+    {/if}
 
   
   <Drawer bind:show={showCertificateDetailDrawer} title="Detail Sertifikat" on:close={() => (showCertificateDetailDrawer = false)}>
