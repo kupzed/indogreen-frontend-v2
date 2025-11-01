@@ -3,6 +3,8 @@
   import { fly, fade } from 'svelte/transition';
   import FilterSection from './FilterSection.svelte';
 
+  type VendorOption = { id: number | string; nama: string };
+
   export let open = false;
 
   export let jenisOptions: string[] = [];
@@ -12,14 +14,18 @@
   export let dateFrom = '';
   export let dateTo = '';
 
+  // ==== vendor support ====
+  export let vendorOptions: VendorOption[] = [];
+  export let vendorValue: number | string | '' = '';
+
   const dispatch = createEventDispatcher<{
-    update: { key: 'jenis'|'kategori'|'dateFrom'|'dateTo', value: any },
+    update: { key: 'jenis'|'kategori'|'dateFrom'|'dateTo'|'vendor', value: any },
     clear: void,
     apply: void,
     close: void
   }>();
 
-  function update(key: 'jenis'|'kategori'|'dateFrom'|'dateTo', value: any) {
+  function update(key: 'jenis'|'kategori'|'dateFrom'|'dateTo'|'vendor', value: any) {
     dispatch('update', { key, value });
   }
 </script>
@@ -52,6 +58,24 @@
             {/each}
           </div>
         </FilterSection>
+
+        {#if vendorOptions.length > 0 && jenisValue === 'Vendor'}
+          <FilterSection title="Vendor" showClear={!!vendorValue} on:clear={() => update('vendor','')}>
+            <div class="mt-2">
+              <select
+                value={vendorValue}
+                on:change={(e)=>update('vendor', (e.target as HTMLSelectElement).value)}
+                class="w-full px-3 py-2 rounded-xl text-sm border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70"
+                aria-label="Filter Vendor"
+              >
+                <option value="">Semua Vendor</option>
+                {#each vendorOptions as v}
+                  <option value={v.id}>{v.nama}</option>
+                {/each}
+              </select>
+            </div>
+          </FilterSection>
+        {/if}
 
         <FilterSection title="Kategori" showClear={!!kategoriValue} on:clear={() => update('kategori','')}>
           <div class="mt-2 flex flex-wrap gap-2">
