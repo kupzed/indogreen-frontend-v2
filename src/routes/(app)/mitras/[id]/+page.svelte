@@ -291,7 +291,7 @@
 {:else if errorMitra}
   <p class="text-rose-500">{errorMitra}</p>
 {:else if mitra}
-  <div class="max-w-5xl mx-auto mb-8">
+  <div class="mx-auto mb-8">
     <section class="min-w-0 flex flex-col min-h-[calc(100dvh-60px-48px)] sm:min-h-[calc(100dvh-72px-48px)]">
       <!-- ====== STICKY WRAPPER: Header + Tabs + (conditional) Action Bar ====== -->
       <div class="sticky z-30 top-[60px] sm:top-[72px] border border-black/5 dark:border-white/10 divide-y divide-black/5 dark:divide-white/10">
