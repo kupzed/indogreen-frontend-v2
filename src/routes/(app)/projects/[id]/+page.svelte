@@ -830,7 +830,7 @@
 
                   {#if activityView === 'table'}
                     <div class="mt-4 rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur shadow-sm">
-                      <div class="overflow-x-auto">
+                      <div class="overflow-x-auto no-scrollbar">
                         <table class="min-w-full divide-y divide-slate-200/70 dark:divide-white/10">
                           <thead class="sticky top-0 z-10 bg-white/80 dark:bg-[#12101d]/80 backdrop-blur">
                             <tr>
@@ -1066,7 +1066,7 @@
 
                   {#if certificateView === 'table'}
                     <div class="mt-4 rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur shadow-sm">
-                      <div class="overflow-x-auto">
+                      <div class="overflow-x-auto no-scrollbar">
                         <table class="min-w-full divide-y divide-slate-200/70 dark:divide-white/10">
                           <thead class="sticky top-0 z-10 bg-white/80 dark:bg-[#12101d]/80 backdrop-blur">
                             <tr>

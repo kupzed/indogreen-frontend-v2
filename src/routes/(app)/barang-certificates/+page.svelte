@@ -383,7 +383,7 @@
         {#if activeView === 'table'}
           <!-- TABLE VIEW -->
           <div class="px-4 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur shadow-sm">
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto no-scrollbar">
               <table class="min-w-full divide-y divide-slate-200/70 dark:divide-white/10">
                 <thead>
                   <tr>
