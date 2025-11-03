@@ -3,8 +3,10 @@
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import ThemeToggle from './ThemeToggle.svelte';
-  import { setToken } from '$lib/api';
+  import { apiFetch, getToken, setToken } from '$lib/api';
   import { fly, fade } from 'svelte/transition';
+  import { currentUser, setUser } from '$lib/stores/user';
+  import { get } from 'svelte/store';
 
   type Link = { name: string; href: string };
   const links: Link[] = [
@@ -117,6 +119,18 @@
   }
 
   onMount(() => {
+    (async () => {
+      try {
+        const hasUser = !!get(currentUser);
+        if (getToken() && !hasUser) {
+          const me: any = await apiFetch('/auth/me', { method: 'POST', auth: true });
+          if (me?.name || me?.email) setUser({ name: me.name ?? '', email: me.email ?? '' });
+        }
+      } catch (e) {
+        // abaikan error (mis. belum login/expired), dropdown tetap tampil
+      }
+    })();
+
     const ro = new ResizeObserver(recalc);
     if (navEl) ro.observe(navEl);
 
@@ -222,7 +236,29 @@
             </button>
 
             {#if showProfile}
-              <div class="absolute right-0 mt-2 w-56 rounded-2xl border border-black/5 dark:border-white/10 bg-white dark:bg-[#12101d] shadow-xl p-2">
+              <!-- svelte-ignore a11y_click_events_have_key_events -->
+              <!-- svelte-ignore a11y_no_static_element_interactions -->
+              <div class="absolute right-0 mt-2 w-64 rounded-2xl border border-black/5 dark:border-white/10 bg-white dark:bg-[#12101d] shadow-xl p-2"
+                  on:click|stopPropagation>
+                <!-- User header -->
+                <div class="px-3 py-3 mb-1 rounded-xl bg-slate-50 dark:bg-white/5 border border-black/5 dark:border-white/10">
+                  <div class="flex items-center gap-3 min-w-0">
+                    <div class="h-9 w-9 rounded-full bg-violet-600/20 text-violet-700 dark:text-violet-300 flex items-center justify-center">
+                      <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 12a5 5 0 1 0-5-5 5.006 5.006 0 0 0 5 5Zm0 2c-4.33 0-8 2.17-8 4.5V21h16v-2.5C20 16.17 16.33 14 12 14Z"/>
+                      </svg>
+                    </div>
+                    <div class="min-w-0">
+                      <p class="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
+                        {($currentUser && $currentUser.name) ? $currentUser.name : '—'}
+                      </p>
+                      <p class="text-xs text-slate-500 dark:text-slate-400 truncate">
+                        {($currentUser && $currentUser.email) ? $currentUser.email : '—'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <!-- Actions -->
                 <button
                   type="button"
                   on:click={() => go('/settings')}
@@ -237,6 +273,7 @@
                 </button>
               </div>
             {/if}
+
           </div>
 
           <!-- Hamburger (mobile only) -->
