@@ -45,6 +45,7 @@
 		"vitest-browser-svelte": "^0.1.0"
 	},
 	"dependencies": {
-		"chart.js": "^4.5.1"
+		"chart.js": "^4.5.1",
+		"sweetalert2": "^11.26.3"
 	}
 }
