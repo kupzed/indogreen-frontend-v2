@@ -331,7 +331,69 @@
     <!-- SECTION KONTEN DI BAWAH BAR (scroll sendiri) -->
     <div class="flex-1 min-h-0 overflow-y-auto overscroll-contain">
       {#if loading}
-        <p class="mt-4 text-slate-900 dark:text-slate-100">Memuat mitra...</p>
+        <div class="px-4 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur shadow-sm" role="status" aria-busy="true">
+          <div class="overflow-x-auto no-scrollbar">
+            <table class="min-w-full divide-y divide-slate-200/70 dark:divide-white/10">
+              <thead class="bg-transparent">
+                <tr>
+                  <th class="px-3 py-3.5 text-left"><div class="h-4 w-28 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div></th>
+                  <th class="px-3 py-3.5 text-left"><div class="h-4 w-24 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div></th>
+                  <th class="px-3 py-3.5 text-left"><div class="h-4 w-20 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div></th>
+                  <th class="px-3 py-3.5 text-left"><div class="h-4 w-16 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div></th>
+                  <th class="px-3 py-3.5 text-left"><div class="h-4 w-12 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-200/70 dark:divide-white/10">
+                {#each Array(perPage || 10) as _}
+                  <tr class="animate-pulse">
+                    <!-- Nama + email -->
+                    <td class="whitespace-nowrap px-3 py-4">
+                      <div class="h-4 w-56 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
+                      <div class="mt-2 h-3 w-40 rounded-md bg-slate-200/60 dark:bg-white/5"></div>
+                    </td>
+                    <!-- Alamat -->
+                    <td class="px-3 py-4">
+                      <div class="h-4 w-64 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
+                    </td>
+                    <!-- Kategori (multi badge) -->
+                    <td class="px-3 py-4">
+                      <div class="flex flex-wrap gap-1">
+                        <span class="h-5 w-16 rounded-full bg-slate-200/70 dark:bg-white/5"></span>
+                        <span class="h-5 w-20 rounded-full bg-slate-200/60 dark:bg-white/5"></span>
+                        <span class="h-5 w-18 rounded-full bg-slate-200/50 dark:bg-white/5"></span>
+                      </div>
+                    </td>
+                    <!-- Kontak -->
+                    <td class="whitespace-nowrap px-3 py-4">
+                      <div class="h-4 w-28 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
+                      <div class="mt-1 h-3 w-24 rounded-md bg-slate-200/50 dark:bg-white/5"></div>
+                    </td>
+                    <!-- Aksi -->
+                    <td class="whitespace-nowrap px-3 py-4">
+                      <div class="flex items-center gap-3">
+                        <div class="h-5 w-5 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
+                        <div class="h-5 w-5 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
+                        <div class="h-5 w-5 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
+                      </div>
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination skeleton -->
+          <div class="border-t border-slate-200/70 dark:border-white/10 px-3 py-3.5">
+            <div class="flex items-center justify-between">
+              <div class="h-4 w-48 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div>
+              <div class="flex items-center gap-2">
+                <div class="h-9 w-24 rounded-xl bg-slate-200/70 dark:bg-white/5 animate-pulse"></div>
+                <div class="h-9 w-9 rounded-xl bg-slate-200/70 dark:bg-white/5 animate-pulse"></div>
+                <div class="h-9 w-9 rounded-xl bg-slate-200/70 dark:bg-white/5 animate-pulse"></div>
+              </div>
+            </div>
+          </div>
+        </div>
       {:else if error}
         <p class="mt-4 text-rose-500">{error}</p>
       {:else if mitras.length === 0}

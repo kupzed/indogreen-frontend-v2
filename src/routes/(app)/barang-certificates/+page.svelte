@@ -332,7 +332,57 @@
     <!-- SECTION KONTEN DI BAWAH BAR -->
     <div class="flex-1 min-h-0 overflow-y-auto overscroll-contain">
       {#if loading}
-        <p class="mt-4 text-slate-900 dark:text-slate-100">Memuat data...</p>
+        <div class="px-4 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur shadow-sm" role="status" aria-busy="true">
+          <div class="overflow-x-auto no-scrollbar">
+            <table class="min-w-full divide-y divide-slate-200/70 dark:divide-white/10">
+              <thead class="bg-transparent">
+                <tr>
+                  <th class="px-3 py-3.5 text-left"><div class="h-4 w-28 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div></th>
+                  <th class="px-3 py-3.5 text-left"><div class="h-4 w-20 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div></th>
+                  <th class="px-3 py-3.5 text-left"><div class="h-4 w-16 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div></th>
+                  <th class="px-3 py-3.5 text-left"><div class="h-4 w-12 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-200/70 dark:divide-white/10">
+                {#each Array(perPage || 10) as _}
+                  <tr class="animate-pulse">
+                    <!-- Nama Barang -->
+                    <td class="whitespace-nowrap px-3 py-4">
+                      <div class="h-4 w-56 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
+                    </td>
+                    <!-- No. Seri -->
+                    <td class="whitespace-nowrap px-3 py-4">
+                      <div class="h-4 w-40 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
+                    </td>
+                    <!-- Mitra -->
+                    <td class="whitespace-nowrap px-3 py-4">
+                      <div class="h-4 w-44 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
+                    </td>
+                    <!-- Aksi -->
+                    <td class="whitespace-nowrap px-3 py-4">
+                      <div class="flex items-center gap-3">
+                        <div class="h-5 w-5 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
+                        <div class="h-5 w-5 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
+                        <div class="h-5 w-5 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
+                      </div>
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="border-t border-slate-200/70 dark:border-white/10 px-3 py-3.5">
+            <div class="flex items-center justify-between">
+              <div class="h-4 w-48 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div>
+              <div class="flex items-center gap-2">
+                <div class="h-9 w-24 rounded-xl bg-slate-200/70 dark:bg-white/5 animate-pulse"></div>
+                <div class="h-9 w-9 rounded-xl bg-slate-200/70 dark:bg-white/5 animate-pulse"></div>
+                <div class="h-9 w-9 rounded-xl bg-slate-200/70 dark:bg-white/5 animate-pulse"></div>
+              </div>
+            </div>
+          </div>
+        </div>
       {:else if error}
         <p class="mt-4 text-rose-500">{error}</p>
       {:else if items.length === 0}
