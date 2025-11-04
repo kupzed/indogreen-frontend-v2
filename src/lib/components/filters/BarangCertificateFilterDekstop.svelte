@@ -22,7 +22,7 @@
   }
 </script>
 
-<div class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur p-4 space-y-4">
+<div class="border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur p-4 space-y-4">
   <FilterSection title="Mitra" startOpen>
     <div class="space-y-1">
       <!-- svelte-ignore a11y_label_has_associated_control -->

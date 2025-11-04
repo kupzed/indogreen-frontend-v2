@@ -25,7 +25,7 @@
   }
 </script>
 
-<div class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur p-4 space-y-4">
+<div class="border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur p-4 space-y-4">
   <FilterSection title="Jenis" showClear={!!jenisValue} startOpen on:clear={() => update('jenis','')}>
     <div class="mt-1 flex flex-wrap gap-2">
       {#each jenisOptions as j}
@@ -44,6 +44,7 @@
   {#if vendorOptions.length > 0 && jenisValue === 'Vendor'}
     <FilterSection title="Vendor" showClear={!!vendorValue} on:clear={() => update('vendor','')}>
       <div class="space-y-2">
+        <!-- svelte-ignore a11y_label_has_associated_control -->
         <label class="block text-xs text-slate-600 dark:text-slate-300">Pilih Vendor</label>
         <select
           value={vendorValue}

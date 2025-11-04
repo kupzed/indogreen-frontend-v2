@@ -19,7 +19,7 @@
   function cap(s: string){ return s ? s[0].toUpperCase()+s.slice(1) : s; }
 </script>
 
-<div class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur p-4 space-y-4">
+<div class="border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur p-4 space-y-4">
   <FilterSection title="Kategori" startOpen>
     <div class="mt-1 flex flex-wrap gap-2">
       {#each kategoriOptions as k}
