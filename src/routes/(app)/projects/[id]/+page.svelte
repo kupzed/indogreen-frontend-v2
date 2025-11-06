@@ -148,7 +148,7 @@
   let activityCurrentPage = 1;
   let activityLastPage = 1;
   let totalActivities = 0;
-  let activityPerPage = 10;
+  let activityPerPage = 50;
   const perPageOptions = [10, 25, 50, 100];
 
   async function fetchActivities() {
@@ -327,37 +327,76 @@
 
   function buildFD(obj: Record<string, any>) {
     const fd = new FormData();
-    Object.entries(obj).forEach(([k, v]) => {
-      if (v === undefined || v === null) return;
-      if (k === 'attachment' && v === null) return;
-      if (k === 'attachment_removed') return; // biar kita set manual di edit
-      fd.append(k, v as any);
-    });
+
+    for (const [key, value] of Object.entries(obj)) {
+      if (value === undefined || value === null || value === '') continue;
+      if (key === 'attachment_removed') continue; // kita set manual saat edit
+
+      // Jika array (string[] | File[]), kirim sebagai key[]
+      if (Array.isArray(value)) {
+        value.forEach((v) => {
+          if (v !== undefined && v !== null && v !== '') {
+            fd.append(`${key}[]`, v as any);
+          }
+        });
+        continue;
+      }
+
+      fd.append(key, value as any);
+    }
+
     return fd;
   }
 
-  async function handleSubmitCreateActivity() {
-    try {
-      const fd = buildFD(createActivityForm);
-      if (createActivityForm.jenis === 'Internal')       fd.set('mitra_id', '1');
-      else if (createActivityForm.jenis === 'Customer')  fd.set('mitra_id', String(project.mitra_id));
-      await apiFetch('/activities', { method: 'POST', body: fd, auth: true });
-      alert('Aktivitas berhasil ditambahkan!');
-      goto(`/projects/${project.id}`);
-      showCreateActivityModal = false;
-      fetchActivities();
-    } catch (err: any) {
-      alert('Error:\n' + (err?.message || 'Gagal menambahkan aktivitas.'));
+  function normalizeActivityPayload(f: any) {
+    const p = { ...f };
+
+    // Backward compat: kalau masih single field, ubah jadi array
+    if (!Array.isArray(p.attachments) && p.attachment) {
+      p.attachments = [p.attachment];
     }
+    if (!Array.isArray(p.attachment_names) && p.attachment_name) {
+      p.attachment_names = [p.attachment_name];
+    }
+
+    // Alias umum dari komponen form
+    if (!p.attachments && Array.isArray(p.files)) p.attachments = p.files;
+    if (!p.attachment_names && Array.isArray(p.file_names)) p.attachment_names = p.file_names;
+
+    return p;
+  }
+
+  async function handleSubmitCreateActivity() {
+  try {
+    const payload = normalizeActivityPayload(createActivityForm);
+    const fd = buildFD(payload);
+
+    if (payload.jenis === 'Internal')       fd.set('mitra_id', '1');
+    else if (payload.jenis === 'Customer')  fd.set('mitra_id', String(project.mitra_id));
+
+    await apiFetch('/activities', { method: 'POST', body: fd, auth: true });
+    alert('Aktivitas berhasil ditambahkan!');
+    goto(`/projects/${project.id}`);
+    showCreateActivityModal = false;
+    fetchActivities();
+  } catch (err: any) {
+    alert('Error:\n' + (err?.message || 'Gagal menambahkan aktivitas.'));
+  }
   }
 
   async function handleSubmitUpdateActivity() {
     if (!editingActivity?.id) return;
     try {
-      const fd = buildFD(editActivityForm);
-      if (editActivityForm.jenis === 'Internal')       fd.set('mitra_id', '1');
-      else if (editActivityForm.jenis === 'Customer')  fd.set('mitra_id', String(project.mitra_id));
+      const payload = normalizeActivityPayload(editActivityForm);
+      const fd = buildFD(payload);
+
+      if (payload.jenis === 'Internal')       fd.set('mitra_id', '1');
+      else if (payload.jenis === 'Customer')  fd.set('mitra_id', String(project.mitra_id));
+
+      // flag hapus lampiran lama (jika komponenmu memakainya)
       fd.append('attachment_removed', editActivityForm.attachment_removed ? '1' : '0');
+
+      // method spoofing
       fd.append('_method', 'PUT');
 
       await apiFetch(`/activities/${editingActivity.id}`, { method: 'POST', body: fd, auth: true });
@@ -398,7 +437,7 @@
   const activityJenisList = ['Internal','Customer','Vendor'];
 
   // Switch List/Table
-  let activeTab: 'detail' | 'activity' | 'certificates' = 'detail';
+  let activeTab: 'detail' | 'activity' | 'certificates' = 'activity';
   let activityView: 'table' | 'list' = 'table';
   const activityViews: Array<'table' | 'list'> = ['table', 'list'];
   function handleActivityViewKeydown(e: KeyboardEvent) {
@@ -529,7 +568,7 @@
   let editingCertificate: ProjectCertificate | null = null;
   let selectedCertificate: ProjectCertificate | null = null;
   let certificateFormFileName = '';
-  let certificatePerPage = 10;
+  let certificatePerPage = 50;
 
   function openCreateCertificateModal() {
     certificateForm = {
@@ -557,18 +596,67 @@
 
   function buildCertificateFormData() {
     const fd = new FormData();
-    const f = certificateForm;
-    fd.append('name', f.name);
-    fd.append('no_certificate', f.no_certificate);
+    const f = certificateForm ?? {};
+
+    // ----- fields dasar -----
+    fd.append('name', f.name || '');
+    fd.append('no_certificate', f.no_certificate || '');
     if (project?.id) fd.append('project_id', String(project.id));
     if (f.barang_certificate_id) fd.append('barang_certificate_id', String(f.barang_certificate_id));
     if (f.status) fd.append('status', f.status);
     fd.append('date_of_issue', f.date_of_issue || '');
     fd.append('date_of_expired', f.date_of_expired || '');
-    if (f.attachment) fd.append('attachment', f.attachment);
+
+    // ----- ATTACHMENTS (multi & single, lengkap dengan names + descriptions) -----
+    const files =
+      (Array.isArray(f.attachments) ? f.attachments : null) ||
+      (Array.isArray(f.attachment_files) ? f.attachment_files : null) ||
+      (Array.isArray(f.attachmentFiles) ? f.attachmentFiles : null) ||
+      null;
+
+    const names =
+      (Array.isArray(f.attachment_names) ? f.attachment_names : null) ||
+      (Array.isArray(f.file_names) ? f.file_names : null) ||
+      (Array.isArray(f.names) ? f.names : null) ||
+      [];
+
+    const descs =
+      (Array.isArray(f.attachment_descriptions) ? f.attachment_descriptions : null) ||
+      (Array.isArray(f.attachment_descs) ? f.attachment_descs : null) ||
+      (Array.isArray(f.descriptions) ? f.descriptions : null) ||
+      (Array.isArray(f.notes) ? f.notes : null) ||
+      [];
+
+    if (files && files.length) {
+      files.forEach((file: File, idx: number) => {
+        if (!file) return;
+        fd.append('attachments[]', file);
+
+        // pastikan index selaras, berikan fallback aman ('' bukan null)
+        const nm = names[idx] ?? (file as any)?.name ?? '';
+        const dc = descs[idx] ?? '';
+        fd.append('attachment_names[]', nm);
+        fd.append('attachment_descriptions[]', dc);
+      });
+    } else {
+      // single fallback
+      const singleFile = f.attachment || f.attachment_file || f.file || null;
+      if (singleFile) {
+        fd.append('attachment', singleFile);
+        fd.append(
+          'attachment_name',
+          (f.attachment_name || f.file_name || (singleFile as any)?.name || '') as string
+        );
+        // <-- INI YANG PENTING: description jangan null
+        fd.append('attachment_description', (f.attachment_description || f.note || '') as string);
+      }
+    }
+
     if (f.attachment_removed) fd.append('attachment_removed', '1');
+
     return fd;
   }
+
 
   async function handleSubmitCreateCertificate() {
     try {
@@ -581,6 +669,7 @@
       alert('Error:\n' + (err?.message || 'Gagal menambahkan data.'));
     }
   }
+
   async function handleSubmitUpdateCertificate() {
     if (!editingCertificate?.id) return;
     try {
@@ -594,6 +683,7 @@
       alert('Error:\n' + (err?.message || 'Gagal memperbarui data.'));
     }
   }
+
   async function handleDeleteCertificate(id: number) {
     if (!confirm('Yakin ingin menghapus certificate ini?')) return;
     try {
@@ -604,6 +694,35 @@
       alert('Gagal menghapus data: ' + (err?.message || 'Terjadi kesalahan'));
     }
   }
+
+  // --- kunci scroll saat drawer filter mobile terbuka ---
+  function lockBodyScroll(lock: boolean) {
+    const body = document.body;
+    if (!body) return;
+    if (lock) {
+      const scrollY = window.scrollY;
+      body.dataset.scrollY = String(scrollY);
+      body.style.position = 'fixed';
+      body.style.top = `-${scrollY}px`;
+      body.style.left = '0';
+      body.style.right = '0';
+      body.style.overflow = 'hidden';
+      body.style.width = '100%';
+    } else {
+      const y = Number(body.dataset.scrollY || '0');
+      body.style.position = '';
+      body.style.top = '';
+      body.style.left = '';
+      body.style.right = '';
+      body.style.overflow = '';
+      body.style.width = '';
+      delete body.dataset.scrollY;
+      window.scrollTo(0, y);
+    }
+  }
+  $: lockBodyScroll(showEditProjectModal || showActivityDetailDrawer || 
+  showCreateActivityModal || showEditActivityModal || showMobileFilter ||
+  showCertificateDetailDrawer || showCreateCertificateModal || showEditCertificateModal);
 </script>
 
 <svelte:head>
@@ -611,16 +730,52 @@
 </svelte:head>
 
 {#if loadingProject}
-  <p class="text-slate-900 dark:text-slate-100">Memuat proyek...</p>
+  <section class="min-w-0 flex flex-col min-h-[calc(100dvh-60px-48px)] sm:min-h-[calc(100dvh-72px-48px)]" role="status" aria-busy="true">
+    <!-- Header skeleton -->
+    <div class="py-3">
+      <div class="flex justify-between items-start gap-4">
+        <div class="flex-1 min-w-0">
+          <div class="h-7 w-64 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div>
+          <div class="my-2 flex flex-wrap gap-3">
+            <div class="h-4 w-52 rounded-md bg-slate-200/60 dark:bg-white/10 animate-pulse"></div>
+            <span class="h-5 w-20 rounded-full bg-slate-200/70 dark:bg-white/10 animate-pulse"></span>
+          </div>
+        </div>
+        <div class="flex flex-col sm:flex-row gap-2 shrink-0">
+          <div class="h-9 w-28 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div>
+          <div class="h-9 w-28 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabs skeleton -->
+    <div class="py-3">
+      <div class="inline-flex rounded-2xl p-1 bg-slate-100 dark:bg-white/5 border border-black/5 dark:border-white/10">
+        <div class="h-8 w-20 rounded-xl bg-slate-200/70 dark:bg-white/10 animate-pulse"></div>
+        <div class="ml-1 h-8 w-24 rounded-xl bg-slate-200/70 dark:bg-white/10 animate-pulse"></div>
+        <div class="ml-1 h-8 w-28 rounded-xl bg-slate-200/70 dark:bg-white/10 animate-pulse"></div>
+      </div>
+    </div>
+
+    <!-- Panel skeleton singkat -->
+    <div class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-[#12101d]/60 backdrop-blur shadow-sm p-6">
+      <div class="h-5 w-40 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div>
+      <div class="mt-4 space-y-3">
+        {#each Array(5) as _}
+          <div class="h-10 rounded-xl bg-slate-200/60 dark:bg-white/5 animate-pulse"></div>
+        {/each}
+      </div>
+    </div>
+  </section>
 {:else if errorProject}
   <p class="text-rose-500">{errorProject}</p>
 {:else if project}
   <div class="mx-auto mb-8">
     <!-- ====== LAYOUT ala Detail Mitra: Sticky Header + Tabs + (conditional) Action Bar ====== -->
     <section class="min-w-0 flex flex-col min-h-[calc(100dvh-60px-48px)] sm:min-h-[calc(100dvh-72px-48px)]">
-      <div class="sticky z-30 top-[60px] sm:top-[72px] border border-black/5 dark:border-white/10 divide-y divide-black/5 dark:divide-white/10">
+      <div>
         <!-- Header -->
-        <div class="bg-white/70 dark:bg-[#12101d]/70 backdrop-blur px-3 py-3">
+        <div class="py-3">
           <div class="flex justify-between items-start gap-4">
             <div class="flex-1 min-w-0">
               <h2 class="text-2xl font-bold leading-7 text-slate-900 dark:text-slate-100">{project.name}</h2>
@@ -648,33 +803,48 @@
         </div>
 
         <!-- Tabs -->
-        <div class="bg-white/70 dark:bg-[#12101d]/70 backdrop-blur px-3 py-2">
-          <div class="p-1 bg-slate-200/70 dark:bg-slate-700/70 rounded-lg inline-flex" role="tablist" aria-label="Project tabs">
+        <div class="py-3">
+          <div class="inline-flex rounded-2xl p-1 bg-slate-100 dark:bg-white/5 border border-black/5 dark:border-white/10" role="tablist" aria-label="Project tabs">
             <button
               on:click={() => (activeTab = 'detail')}
-              class="px-4 py-2 rounded-lg text-sm font-semibold text-slate-700 dark:text-slate-200"
-              class:bg-white={activeTab==='detail'}
-              class:dark:bg-neutral-900={activeTab==='detail'}
-              class:shadow={activeTab==='detail'}
+              class="px-4 py-2 rounded-xl text-sm font-semibold transition text-slate-600 dark:text-slate-300"
+              class:bg-white={activeTab === 'detail'}
+              class:dark:bg-violet-900={activeTab === 'detail'}
+              class:text-violet-800={activeTab === 'detail'}
+              class:dark:text-white={activeTab === 'detail'}
             >Detail</button>
             <button
               on:click={() => (activeTab = 'activity')}
-              class="px-4 py-2 rounded-lg text-sm font-semibold text-slate-700 dark:text-slate-200"
-              class:bg-white={activeTab==='activity'}
-              class:dark:bg-neutral-900={activeTab==='activity'}
-              class:shadow={activeTab==='activity'}
+              class="px-4 py-2 rounded-xl text-sm font-semibold transition text-slate-600 dark:text-slate-300"
+              class:bg-white={activeTab === 'activity'}
+              class:dark:bg-violet-900={activeTab === 'activity'}
+              class:text-violet-800={activeTab === 'activity'}
+              class:dark:text-white={activeTab === 'activity'}
             >Activity</button>
             {#if project?.is_cert_projects}
               <button
                 on:click={() => (activeTab = 'certificates')}
-                class="px-4 py-2 rounded-lg text-sm font-semibold text-slate-700 dark:text-slate-200"
-                class:bg-white={activeTab==='certificates'}
-                class:dark:bg-neutral-900={activeTab==='certificates'}
-                class:shadow={activeTab==='certificates'}
+                class="px-4 py-2 rounded-xl text-sm font-semibold transition text-slate-600 dark:text-slate-300"
+                class:bg-white={activeTab === 'certificates'}
+                class:dark:bg-violet-900={activeTab === 'certificates'}
+                class:text-violet-800={activeTab === 'certificates'}
+                class:dark:text-white={activeTab === 'certificates'}
               >Certificate</button>
             {/if}
           </div>
         </div>
+
+        <!-- Action Bar: Detail -->
+        {#if activeTab === 'detail'}
+          <div class="bg-white/90 dark:bg-[#0e0c19]/90 backdrop-blur border border-black/5 dark:border-white/10 shadow-sm overflow-hidden mb-8">
+            <div class="px-4 py-5 sm:px-6 border-b border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur">
+              <h3 class="text-lg leading-6 font-medium text-slate-900 dark:text-slate-100">Informasi Project</h3>
+            </div>
+            <div class="px-4 py-3 sm:px-6">
+              <ProjectDetail project={project} />
+            </div>
+          </div>
+        {/if}
 
         <!-- Action Bar: Activity -->
         {#if activeTab === 'activity'}
@@ -715,9 +885,28 @@
                 <div class="flex items-center gap-2 flex-nowrap bg-white/70 dark:bg-[#12101d]/70 backdrop-blur px-2 py-2">
                   <!-- kiri: tombol filter + switch view -->
                   <div class="flex items-center gap-2 shrink-0">
-                    <button type="button" on:click={toggleFilter}
-                      class="inline-flex items-center justify-center h-9 w-9 rounded-md border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70">
-                      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M6 12h12M10 18h4"/></svg>
+                    <button
+                      type="button"
+                      on:click={toggleFilter}
+                      class="inline-flex items-center justify-center h-9 w-9 rounded-md text-sm
+                            border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70
+                            text-slate-800 dark:text-slate-100 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                      aria-label="Filter"
+                    >
+                      {#if showSidebar}
+                        <svg class="w-5 h-5 hidden lg:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
+                        </svg>
+
+                        <svg class="w-5 h-5 lg:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M4 6h16M6 12h12M10 18h4"/>
+                        </svg>
+
+                      {:else}
+                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M4 6h16M6 12h12M10 18h4"/>
+                        </svg>
+                      {/if}
                       <span class="sr-only">Filter</span>
                     </button>
 
@@ -748,8 +937,11 @@
                         class="block w-full pl-10 pr-3 h-9 rounded-md text-sm border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 placeholder-slate-500 dark:placeholder-slate-400" />
                     </div>
                     <button on:click={openCreateActivityModal}
-                      class="h-9 w-9 bg-violet-600 hover:bg-violet-700 text-white rounded-md shadow-sm grid place-items-center" aria-label="Tambah Aktivitas" title="Tambah Aktivitas">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                      class="h-9 w-9 bg-violet-600 hover:bg-violet-700 text-white rounded-md shadow-sm transition-all duration-200 hover:scale-105 active:scale-95 grid place-items-center shrink-0"
+                      aria-label="Tambah Project" title="Tambah Project">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                      </svg>
                     </button>
                   </div>
                 </div>
@@ -771,7 +963,89 @@
               <!-- AREA KONTEN -->
               <div class="flex-1 min-h-0 overflow-y-auto overscroll-contain">
                 {#if loadingActivities}
-                  <p class="mt-4 text-slate-900 dark:text-slate-100">Memuat aktivitas...</p>
+                  {#if activityView === 'table'}
+                    <!-- TABLE SKELETON: Activities -->
+                    <div class="px-4 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur shadow-sm" role="status" aria-busy="true">
+                      <div class="overflow-x-auto no-scrollbar">
+                        <table class="min-w-full divide-y divide-slate-200/70 dark:divide-white/10">
+                          <thead class="bg-transparent">
+                            <tr>
+                              {#each ['Nama Aktivitas','Kategori','Jenis','Mitra','Tanggal','Aksi'] as _}
+                                <th class="px-3 py-3.5 text-left">
+                                  <div class="h-4 w-28 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div>
+                                </th>
+                              {/each}
+                            </tr>
+                          </thead>
+                          <tbody class="divide-y divide-slate-200/70 dark:divide-white/10">
+                            {#each Array(Math.min(activityPerPage || 10, 10)) as _}
+                              <tr class="animate-pulse">
+                                <td class="px-3 py-4">
+                                  <div class="h-4 w-56 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
+                                  <div class="mt-2 h-3 w-40 rounded-md bg-slate-200/50 dark:bg-white/5"></div>
+                                </td>
+                                <td class="px-3 py-4"><span class="block h-5 w-20 rounded-full bg-slate-200/70 dark:bg-white/5"></span></td>
+                                <td class="px-3 py-4"><div class="h-4 w-24 rounded-md bg-slate-200/70 dark:bg-white/5"></div></td>
+                                <td class="px-3 py-4"><div class="h-4 w-36 rounded-md bg-slate-200/70 dark:bg-white/5"></div></td>
+                                <td class="px-3 py-4"><div class="h-4 w-28 rounded-md bg-slate-200/70 dark:bg-white/5"></div></td>
+                                <td class="px-3 py-4">
+                                  <div class="flex items-center gap-3">
+                                    <div class="h-5 w-5 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
+                                    <div class="h-5 w-5 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
+                                    <div class="h-5 w-5 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
+                                  </div>
+                                </td>
+                              </tr>
+                            {/each}
+                          </tbody>
+                        </table>
+                      </div>
+                      <!-- pagination skeleton -->
+                      <div class="border-t border-slate-200/70 dark:border-white/10 px-3 py-3.5">
+                        <div class="flex items-center justify-between">
+                          <div class="h-4 w-48 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div>
+                          <div class="flex items-center gap-2">
+                            <div class="h-9 w-24 rounded-xl bg-slate-200/70 dark:bg-white/5 animate-pulse"></div>
+                            <div class="h-9 w-9 rounded-xl bg-slate-200/70 dark:bg-white/5 animate-pulse"></div>
+                            <div class="h-9 w-9 rounded-xl bg-slate-200/70 dark:bg-white/5 animate-pulse"></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  {:else}
+                    <!-- LIST SKELETON: Activities -->
+                    <div class="mt-4 rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur shadow-sm" role="status" aria-busy="true">
+                      <ul class="divide-y divide-slate-200/70 dark:divide-white/10">
+                        {#each Array(6) as _}
+                          <li class="px-4 py-4 sm:px-6 animate-pulse">
+                            <div class="flex items-center justify-between">
+                              <div class="h-4 w-48 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
+                              <span class="h-5 w-20 rounded-full bg-slate-200/70 dark:bg-white/5"></span>
+                            </div>
+                            <div class="mt-2 flex flex-wrap items-center justify-between gap-3">
+                              <div class="h-4 w-72 rounded-md bg-slate-200/60 dark:bg-white/5"></div>
+                              <div class="h-4 w-40 rounded-md bg-slate-200/60 dark:bg-white/5"></div>
+                            </div>
+                            <div class="mt-3 flex justify-end gap-2">
+                              <div class="h-7 w-16 rounded-lg bg-slate-200/70 dark:bg-white/5"></div>
+                              <div class="h-7 w-14 rounded-lg bg-slate-200/70 dark:bg-white/5"></div>
+                              <div class="h-7 w-14 rounded-lg bg-slate-200/70 dark:bg-white/5"></div>
+                            </div>
+                          </li>
+                        {/each}
+                      </ul>
+                      <div class="border-t border-slate-200/70 dark:border-white/10 px-3 py-3.5">
+                        <div class="flex items-center justify-between">
+                          <div class="h-4 w-48 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div>
+                          <div class="flex items-center gap-2">
+                            <div class="h-9 w-24 rounded-xl bg-slate-200/70 dark:bg-white/5 animate-pulse"></div>
+                            <div class="h-9 w-9 rounded-xl bg-slate-200/70 dark:bg-white/5 animate-pulse"></div>
+                            <div class="h-9 w-9 rounded-xl bg-slate-200/70 dark:bg-white/5 animate-pulse"></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  {/if}
                 {:else if errorActivities}
                   <p class="mt-4 text-rose-500">{errorActivities}</p>
                 {:else if activities.length === 0}
@@ -829,10 +1103,10 @@
                   {/if}
 
                   {#if activityView === 'table'}
-                    <div class="mt-4 rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur shadow-sm">
+                    <div class="px-4 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur shadow-sm">
                       <div class="overflow-x-auto no-scrollbar">
                         <table class="min-w-full divide-y divide-slate-200/70 dark:divide-white/10">
-                          <thead class="sticky top-0 z-10 bg-white/80 dark:bg-[#12101d]/80 backdrop-blur">
+                          <thead>
                             <tr>
                               <th class="px-3 py-3.5 text-left text-sm font-semibold">Nama Aktivitas</th>
                               <th class="px-3 py-3.5 text-left text-sm font-semibold">Kategori</th>
@@ -959,9 +1233,28 @@
                 <div class="flex items-center gap-2 flex-nowrap bg-white/70 dark:bg-[#12101d]/70 backdrop-blur px-2 py-2">
                   <!-- kiri: tombol filter + switch view -->
                   <div class="flex items-center gap-2 shrink-0">
-                    <button type="button" on:click={toggleFilter}
-                      class="inline-flex items-center justify-center h-9 w-9 rounded-md border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70">
-                      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M6 12h12M10 18h4"/></svg>
+                    <button
+                      type="button"
+                      on:click={toggleFilter}
+                      class="inline-flex items-center justify-center h-9 w-9 rounded-md text-sm
+                            border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70
+                            text-slate-800 dark:text-slate-100 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                      aria-label="Filter"
+                    >
+                      {#if showSidebar}
+                        <svg class="w-5 h-5 hidden lg:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
+                        </svg>
+
+                        <svg class="w-5 h-5 lg:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M4 6h16M6 12h12M10 18h4"/>
+                        </svg>
+
+                      {:else}
+                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M4 6h16M6 12h12M10 18h4"/>
+                        </svg>
+                      {/if}
                       <span class="sr-only">Filter</span>
                     </button>
 
@@ -992,8 +1285,11 @@
                         class="block w-full pl-10 pr-3 h-9 rounded-md text-sm border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 placeholder-slate-500 dark:placeholder-slate-400" />
                     </div>
                     <button on:click={openCreateCertificateModal}
-                      class="h-9 w-9 bg-violet-600 hover:bg-violet-700 text-white rounded-md shadow-sm grid place-items-center" aria-label="Tambah Sertifikat" title="Tambah Sertifikat">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                      class="h-9 w-9 bg-violet-600 hover:bg-violet-700 text-white rounded-md shadow-sm transition-all duration-200 hover:scale-105 active:scale-95 grid place-items-center shrink-0"
+                      aria-label="Tambah Project" title="Tambah Project">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                      </svg>
                     </button>
                   </div>
                 </div>
@@ -1015,7 +1311,90 @@
               <!-- AREA KONTEN -->
               <div class="flex-1 min-h-0 overflow-y-auto overscroll-contain">
                 {#if loadingCertificates}
-                  <p class="mt-4 text-slate-900 dark:text-slate-100">Memuat sertifikat...</p>
+                  {#if certificateView === 'table'}
+                    <!-- TABLE SKELETON: Certificates -->
+                    <div class="px-4 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur shadow-sm" role="status" aria-busy="true">
+                      <div class="overflow-x-auto no-scrollbar">
+                        <table class="min-w-full divide-y divide-slate-200/70 dark:divide-white/10">
+                          <thead class="bg-transparent">
+                            <tr>
+                              {#each ['Nama','No. Sertifikat','Barang','Status','Terbit','Expired','Aksi'] as _}
+                                <th class="px-3 py-3.5 text-left">
+                                  <div class="h-4 w-28 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div>
+                                </th>
+                              {/each}
+                            </tr>
+                          </thead>
+                          <tbody class="divide-y divide-slate-200/70 dark:divide-white/10">
+                            {#each Array(Math.min(certificatePerPage || 10, 10)) as _}
+                              <tr class="animate-pulse">
+                                <td class="px-3 py-4">
+                                  <div class="h-4 w-56 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
+                                  <div class="mt-2 h-3 w-40 rounded-md bg-slate-200/50 dark:bg-white/5"></div>
+                                </td>
+                                <td class="px-3 py-4"><div class="h-4 w-40 rounded-md bg-slate-200/70 dark:bg-white/5"></div></td>
+                                <td class="px-3 py-4"><div class="h-4 w-44 rounded-md bg-slate-200/70 dark:bg-white/5"></div></td>
+                                <td class="px-3 py-4"><span class="block h-5 w-20 rounded-full bg-slate-200/70 dark:bg-white/5"></span></td>
+                                <td class="px-3 py-4"><div class="h-4 w-28 rounded-md bg-slate-200/70 dark:bg-white/5"></div></td>
+                                <td class="px-3 py-4"><div class="h-4 w-28 rounded-md bg-slate-200/70 dark:bg-white/5"></div></td>
+                                <td class="px-3 py-4">
+                                  <div class="flex items-center gap-3">
+                                    <div class="h-5 w-5 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
+                                    <div class="h-5 w-5 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
+                                    <div class="h-5 w-5 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
+                                  </div>
+                                </td>
+                              </tr>
+                            {/each}
+                          </tbody>
+                        </table>
+                      </div>
+                      <!-- pagination skeleton -->
+                      <div class="border-t border-slate-200/70 dark:border-white/10 px-3 py-3.5">
+                        <div class="flex items-center justify-between">
+                          <div class="h-4 w-48 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div>
+                          <div class="flex items-center gap-2">
+                            <div class="h-9 w-24 rounded-xl bg-slate-200/70 dark:bg-white/5 animate-pulse"></div>
+                            <div class="h-9 w-9 rounded-xl bg-slate-200/70 dark:bg-white/5 animate-pulse"></div>
+                            <div class="h-9 w-9 rounded-xl bg-slate-200/70 dark:bg-white/5 animate-pulse"></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  {:else}
+                    <!-- LIST SKELETON: Certificates -->
+                    <div class="mt-4 rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur shadow-sm" role="status" aria-busy="true">
+                      <ul class="divide-y divide-slate-200/70 dark:divide-white/10">
+                        {#each Array(6) as _}
+                          <li class="px-4 py-4 sm:px-6 animate-pulse">
+                            <div class="flex items-center justify-between">
+                              <div class="h-4 w-48 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
+                              <span class="h-5 w-20 rounded-full bg-slate-200/70 dark:bg-white/5"></span>
+                            </div>
+                            <div class="mt-2 flex flex-wrap items-center justify-between gap-3">
+                              <div class="h-4 w-72 rounded-md bg-slate-200/60 dark:bg-white/5"></div>
+                              <div class="h-4 w-40 rounded-md bg-slate-200/60 dark:bg-white/5"></div>
+                            </div>
+                            <div class="mt-3 flex justify-end gap-2">
+                              <div class="h-7 w-16 rounded-lg bg-slate-200/70 dark:bg-white/5"></div>
+                              <div class="h-7 w-14 rounded-lg bg-slate-200/70 dark:bg-white/5"></div>
+                              <div class="h-7 w-14 rounded-lg bg-slate-200/70 dark:bg-white/5"></div>
+                            </div>
+                          </li>
+                        {/each}
+                      </ul>
+                      <div class="border-t border-slate-200/70 dark:border-white/10 px-3 py-3.5">
+                        <div class="flex items-center justify-between">
+                          <div class="h-4 w-48 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div>
+                          <div class="flex items-center gap-2">
+                            <div class="h-9 w-24 rounded-xl bg-slate-200/70 dark:bg-white/5 animate-pulse"></div>
+                            <div class="h-9 w-9 rounded-xl bg-slate-200/70 dark:bg-white/5 animate-pulse"></div>
+                            <div class="h-9 w-9 rounded-xl bg-slate-200/70 dark:bg-white/5 animate-pulse"></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  {/if}
                 {:else if errorCertificates}
                   <p class="mt-4 text-rose-500">{errorCertificates}</p>
                 {:else if certificates.length === 0}
@@ -1065,10 +1444,10 @@
                   {/if}
 
                   {#if certificateView === 'table'}
-                    <div class="mt-4 rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur shadow-sm">
+                    <div class="px-4 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur shadow-sm">
                       <div class="overflow-x-auto no-scrollbar">
                         <table class="min-w-full divide-y divide-slate-200/70 dark:divide-white/10">
-                          <thead class="sticky top-0 z-10 bg-white/80 dark:bg-[#12101d]/80 backdrop-blur">
+                          <thead>
                             <tr>
                               <th class="px-3 py-3.5 text-left text-sm font-semibold">Nama Sertifikat</th>
                               <th class="px-3 py-3.5 text-left text-sm font-semibold">No. Sertifikat</th>
@@ -1153,21 +1532,6 @@
               on:close={() => (showMobileFilter = false)}
             />
           {/if}
-        {/if}
-      </div>
-
-      <!-- ====== SCROLL AREA di bawah sticky bars ====== -->
-      <div class="flex-1 min-h-0 overflow-y-auto overscroll-contain">
-        <!-- DETAIL -->
-        {#if activeTab === 'detail'}
-          <div class="mt-4 rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur shadow-sm overflow-hidden mb-8">
-            <div class="px-4 py-5 sm:px-6">
-              <h3 class="text-lg leading-6 font-medium text-slate-900 dark:text-slate-100">Informasi Project</h3>
-            </div>
-            <div class="border-t border-slate-200/60 dark:border-white/10">
-              <ProjectDetail project={project} />
-            </div>
-          </div>
         {/if}
       </div>
     </section>
