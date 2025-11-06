@@ -201,7 +201,7 @@
 {:else if !item}
   <p class="mt-4 text-slate-900 dark:text-slate-100">Data tidak ditemukan.</p>
 {:else}
-  <div class="max-w-4xl mx-auto mb-8">
+  <div class="mx-auto mb-8">
     <div class="flex justify-between items-start gap-4 mb-4">
       <div class="min-w-0">
         <h2 class="text-2xl font-bold text-slate-900 dark:text-slate-100">{item.name}</h2>
