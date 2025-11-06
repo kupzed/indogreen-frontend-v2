@@ -25,7 +25,7 @@
 </svelte:head>
 
 <!-- App shell background -->
-<div class="min-h-screen bg-gradient-to-b from-violet-50 to-white dark:from-[#0b0617] dark:to-[#0b0617]">
+<div class="min-h-screen bg-gradient-to-b from-violet-50 to-violet-50 dark:from-[#0b0317] dark:to-[#0b0317]">
   <AppNavbar />
 
   <!-- Page container -->
