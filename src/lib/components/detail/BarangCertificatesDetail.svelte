@@ -3,27 +3,23 @@
 </script>
 
 {#if barangCertificates}
-  <div class="bg-white dark:bg-black shadow border border-gray-200 dark:border-neutral-800 overflow-hidden sm:rounded-md">
-    <dl class="divide-y divide-gray-100 dark:divide-gray-800">
-      <div class="bg-white dark:bg-black px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-        <dt class="text-sm font-medium text-gray-500 dark:text-gray-300">Nama</dt>
-        <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100 sm:mt-0 sm:col-span-2">
-          {barangCertificates.name}
-        </dd>
+  <div class="bg-white/70 dark:bg-[#12101d]/70 backdrop-blur shadow-sm border border-black/5 dark:border-white/10 overflow-hidden">
+    <dl class="divide-y divide-black/5 dark:divide-white/10">
+      <div class="px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+        <dt class="text-sm font-medium text-slate-500 dark:text-slate-300">Nama</dt>
+        <dd class="mt-1 text-sm text-slate-900 dark:text-slate-100 sm:mt-0 sm:col-span-2">{barangCertificates.name}</dd>
       </div>
 
-      <div class="bg-white dark:bg-black px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-        <dt class="text-sm font-medium text-gray-500 dark:text-gray-300">No. Seri</dt>
-        <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100 sm:mt-0 sm:col-span-2">
-          {barangCertificates.no_seri}
-        </dd>
+      <div class="px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+        <dt class="text-sm font-medium text-slate-500 dark:text-slate-300">No. Seri</dt>
+        <dd class="mt-1 text-sm text-slate-900 dark:text-slate-100 sm:mt-0 sm:col-span-2">{barangCertificates.no_seri}</dd>
       </div>
 
-      <div class="bg-white dark:bg-black px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-        <dt class="text-sm font-medium text-gray-500 dark:text-gray-300">Mitra</dt>
-        <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100 sm:mt-0 sm:col-span-2">
+      <div class="px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+        <dt class="text-sm font-medium text-slate-500 dark:text-slate-300">Mitra</dt>
+        <dd class="mt-1 text-sm text-slate-900 dark:text-slate-100 sm:mt-0 sm:col-span-2">
           {#if barangCertificates.mitra}
-            <a href={`/mitras/${barangCertificates.mitra.id}`} class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300">{barangCertificates.mitra.nama}</a>
+            <a href={`/mitras/${barangCertificates.mitra.id}`} class="text-violet-700 dark:text-violet-300 hover:underline">{barangCertificates.mitra.nama}</a>
           {:else}
             -
           {/if}
