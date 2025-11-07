@@ -4,7 +4,7 @@
   export let totalItems: number;
   export let itemsPerPage: number = 10;
 
-  // NEW: opsi & handler perubahan per page
+  // opsi & handler perubahan per page (tetap kompatibel)
   export let perPageOptions: number[] = [10, 25, 50, 100];
   export let onPerPageChange: (n: number) => void = () => {};
 
@@ -21,170 +21,104 @@
 
   function handlePerPageChange(e: Event) {
     const n = parseInt((e.target as HTMLSelectElement).value, 10);
-    if (!Number.isNaN(n) && n !== itemsPerPage) {
-      onPerPageChange(n);
-    }
+    if (!Number.isNaN(n) && n !== itemsPerPage) onPerPageChange(n);
   }
+
+  // util class untuk pill button
+  const pill =
+    "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm border transition " +
+    "border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 " +
+    "hover:bg-violet-600/10 hover:text-violet-700 dark:hover:text-violet-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50";
+  const pillIcon =
+    "inline-flex items-center justify-center rounded-md p-1.5 border " +
+    "border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 " +
+    "hover:bg-violet-600/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50";
 </script>
 
 {#if totalItems > 0}
-  <div class="flex items-center justify-between border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-black px-4 py-3 sm:px-6">
+  <div class="border-y border-y-black/5 dark:border-y-white/10 px-4 py-3 sm:px-5 shadow-sm">
+    <!-- Mobile -->
     {#if showMobileButtons}
-      <!-- Mobile -->
-      <div class="sm:hidden w-full flex flex-col items-center justify-center gap-2 text-center">
+      <div class="sm:hidden flex flex-col gap-3 items-stretch text-center">
         {#if showResultsInfo}
-          <p class="text-xs text-gray-700 dark:text-gray-300">
+          <div class="text-sm text-slate-700 dark:text-slate-300">
             Showing
             <select
               value={itemsPerPage}
               on:change={handlePerPageChange}
-              class="px-2 py-1 text-xs rounded-md border border-gray-300 bg-white text-gray-900
-                     dark:bg-neutral-900 dark:text-gray-100 dark:border-gray-700"
+              class="w-auto mx-1 py-1 rounded-md border border-black/10 dark:border-white/10 bg-white/80 dark:bg-[#0f0d1b] text-xs
+                    text-slate-900 dark:text-slate-100"
             >
-              {#each perPageOptions as opt}
-                <option value={opt}>{opt}</option>
-              {/each}
+              {#each perPageOptions as opt}<option value={opt}>{opt}</option>{/each}
             </select>
-            Records (Showing <span class="font-bold">{startItem}</span> to <span class="font-bold">{endItem}</span> of <span class="font-bold">{totalItems}</span>)
-          </p>
+            Records (<b>{startItem}</b> – <b>{endItem}</b> of <b>{totalItems}</b>)
+          </div>
         {/if}
 
-        <nav class="flex items-center justify-center space-x-1" aria-label="Pagination">
-          <!-- First -->
-          <button
-            on:click={() => goToPage(1)}
-            disabled={currentPage === 1}
-            class="px-2 py-1 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50
-                  focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
-                  dark:text-gray-100 dark:bg-neutral-900 dark:border-gray-700 dark:hover:bg-neutral-800
-                  {currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}">
-            First
+        <nav class="flex items-center justify-center gap-2" aria-label="Pagination">
+          <button class={pill} on:click={() => goToPage(1)} disabled={currentPage === 1}
+            class:opacity-50={currentPage === 1} class:cursor-not-allowed={currentPage === 1}>First</button>
+
+          <button class={pillIcon} on:click={() => goToPage(currentPage - 1)} disabled={currentPage === 1}
+            class:opacity-50={currentPage === 1} class:cursor-not-allowed={currentPage === 1} aria-label="Previous page">
+            <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.78 5.22a.75.75 0 0 1 0 1.06L8.06 10l3.72 3.72a.75.75 0 1 1-1.06 1.06l-4.25-4.25a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd"/></svg>
           </button>
 
-          <!-- Prev -->
-          <!-- svelte-ignore a11y_consider_explicit_label -->
-          <button
-            on:click={() => goToPage(currentPage - 1)}
-            disabled={currentPage === 1}
-            class="p-1 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50
-                  focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
-                  dark:text-gray-100 dark:bg-neutral-900 dark:border-gray-700 dark:hover:bg-neutral-800
-                  {currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}">
-            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M11.78 5.22a.75.75 0 0 1 0 1.06L8.06 10l3.72 3.72a.75.75 0 1 1-1.06 1.06l-4.25-4.25a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd" />
-            </svg>
-          </button>
-
-          <!-- Page info -->
-          <span class="px-2 py-1 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md
-                      dark:text-gray-100 dark:bg-neutral-900 dark:border-gray-700">
+          <span class="inline-flex items-center rounded-md px-3 py-1.5 text-xs border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 text-slate-700 dark:text-slate-300">
             Page {currentPage} of {lastPage}
           </span>
 
-          <!-- Next -->
-          <!-- svelte-ignore a11y_consider_explicit_label -->
-          <button
-            on:click={() => goToPage(currentPage + 1)}
-            disabled={currentPage === lastPage}
-            class="p-1 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50
-                  focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
-                  dark:text-gray-100 dark:bg-neutral-900 dark:border-gray-700 dark:hover:bg-neutral-800
-                  {currentPage === lastPage ? 'opacity-50 cursor-not-allowed' : ''}">
-            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
-            </svg>
+          <button class={pillIcon} on:click={() => goToPage(currentPage + 1)} disabled={currentPage === lastPage}
+            class:opacity-50={currentPage === lastPage} class:cursor-not-allowed={currentPage === lastPage} aria-label="Next page">
+            <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd"/></svg>
           </button>
 
-          <!-- Last -->
-          <!-- svelte-ignore a11y_consider_explicit_label -->
-          <button
-            on:click={() => goToPage(lastPage)}
-            disabled={currentPage === lastPage}
-            class="px-2 py-1 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50
-                  focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
-                  dark:text-gray-100 dark:bg-neutral-900 dark:border-gray-700 dark:hover:bg-neutral-800
-                  {currentPage === lastPage ? 'opacity-50 cursor-not-allowed' : ''}">
-            Last
-          </button>
+          <button class={pill} on:click={() => goToPage(lastPage)} disabled={currentPage === lastPage}
+            class:opacity-50={currentPage === lastPage} class:cursor-not-allowed={currentPage === lastPage}>Last</button>
         </nav>
       </div>
     {/if}
 
     <!-- Desktop -->
-    <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+    <div class="hidden sm:flex sm:items-center sm:justify-between">
       <div class="flex items-center gap-3">
         {#if showResultsInfo}
-          <p class="text-xs text-gray-700 dark:text-gray-300">
+          <div class="text-sm text-slate-700 dark:text-slate-300">
             Showing
             <select
               value={itemsPerPage}
               on:change={handlePerPageChange}
-              class="px-2 py-1 text-xs rounded-md border border-gray-300 bg-white text-gray-900
-                    dark:bg-neutral-900 dark:text-gray-100 dark:border-gray-700"
+              class="w-auto mx-1 py-1 rounded-md border border-black/10 dark:border-white/10 bg-white/80 dark:bg-[#0f0d1b] text-xs
+                    text-slate-900 dark:text-slate-100"
             >
-              {#each perPageOptions as opt}
-                <option value={opt}>{opt}</option>
-              {/each}
+              {#each perPageOptions as opt}<option value={opt}>{opt}</option>{/each}
             </select>
-            Records (Showing <span class="font-bold">{startItem}</span> to <span class="font-bold">{endItem}</span> of <span class="font-bold">{totalItems}</span>)
-          </p>
+            Records (<b>{startItem}</b> – <b>{endItem}</b> of <b>{totalItems}</b>)
+          </div>
         {/if}
       </div>
 
-      <div>
-        <nav class="flex items-center space-x-2" aria-label="Pagination">
-          <button 
-            on:click={() => goToPage(1)} 
-            disabled={currentPage === 1} 
-            class="px-2 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50
-                   focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
-                   dark:text-gray-100 dark:bg-neutral-900 dark:border-gray-700 dark:hover:bg-neutral-800
-                   {currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}">
-            First
-          </button>
+      <nav class="flex items-center gap-2" aria-label="Pagination">
+        <button class={pill} on:click={() => goToPage(1)} disabled={currentPage === 1}
+          class:opacity-50={currentPage === 1} class:cursor-not-allowed={currentPage === 1}>First</button>
 
-          <!-- svelte-ignore a11y_consider_explicit_label -->
-          <button 
-            on:click={() => goToPage(currentPage - 1)} 
-            disabled={currentPage === 1} 
-            class="p-1.5 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50
-                   focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
-                   dark:text-gray-100 dark:bg-neutral-900 dark:border-gray-700 dark:hover:bg-neutral-800
-                   {currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}">
-            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M11.78 5.22a.75.75 0 0 1 0 1.06L8.06 10l3.72 3.72a.75.75 0 1 1-1.06 1.06l-4.25-4.25a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd" />
-            </svg>
-          </button>
+        <button class={pillIcon} on:click={() => goToPage(currentPage - 1)} disabled={currentPage === 1}
+          class:opacity-50={currentPage === 1} class:cursor-not-allowed={currentPage === 1} aria-label="Previous page">
+          <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.78 5.22a.75.75 0 0 1 0 1.06L8.06 10l3.72 3.72a.75.75 0 1 1-1.06 1.06l-4.25-4.25a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd"/></svg>
+        </button>
 
-          <span class="px-2 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md
-                       dark:text-gray-100 dark:bg-neutral-900 dark:border-gray-700">
-            Page {currentPage} of {lastPage}
-          </span>
+        <span class="inline-flex items-center rounded-md px-3 py-1.5 text-sm border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 text-slate-700 dark:text-slate-300">
+          Page {currentPage} of {lastPage}
+        </span>
 
-          <!-- svelte-ignore a11y_consider_explicit_label -->
-          <button 
-            on:click={() => goToPage(currentPage + 1)} 
-            disabled={currentPage === lastPage} 
-            class="p-1.5 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50
-                   focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
-                   dark:text-gray-100 dark:bg-neutral-900 dark:border-gray-700 dark:hover:bg-neutral-800
-                   {currentPage === lastPage ? 'opacity-50 cursor-not-allowed' : ''}">
-            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
-            </svg>
-          </button>
+        <button class={pillIcon} on:click={() => goToPage(currentPage + 1)} disabled={currentPage === lastPage}
+          class:opacity-50={currentPage === lastPage} class:cursor-not-allowed={currentPage === lastPage} aria-label="Next page">
+          <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd"/></svg>
+        </button>
 
-          <button 
-            on:click={() => goToPage(lastPage)} 
-            disabled={currentPage === lastPage} 
-            class="px-2 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50
-                   focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
-                   dark:text-gray-100 dark:bg-neutral-900 dark:border-gray-700 dark:hover:bg-neutral-800
-                   {currentPage === lastPage ? 'opacity-50 cursor-not-allowed' : ''}">
-            Last
-          </button>
-        </nav>
-      </div>
+        <button class={pill} on:click={() => goToPage(lastPage)} disabled={currentPage === lastPage}
+          class:opacity-50={currentPage === lastPage} class:cursor-not-allowed={currentPage === lastPage}>Last</button>
+      </nav>
     </div>
   </div>
 {/if}
