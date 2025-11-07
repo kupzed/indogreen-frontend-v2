@@ -227,19 +227,53 @@
 <svelte:head><title>Detail Activity - Indogreen</title></svelte:head>
 
 {#if loading}
-  <p class="mt-4 text-slate-900 dark:text-slate-100">Memuat detail aktivitas...</p>
+  <section class="min-w-0 flex flex-col min-h-[calc(100dvh-60px-48px)] sm:min-h-[calc(100dvh-72px-48px)]" role="status" aria-busy="true">
+    <!-- Header skeleton -->
+    <div class="py-3">
+      <div class="flex justify-between items-start gap-4">
+        <div class="flex-1 min-w-0">
+          <div class="h-7 w-64 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div>
+          <div class="my-2 flex flex-wrap gap-3">
+            <div class="h-4 w-52 rounded-md bg-slate-200/60 dark:bg-white/10 animate-pulse"></div>
+            <span class="h-5 w-20 rounded-full bg-slate-200/70 dark:bg-white/10 animate-pulse"></span>
+          </div>
+        </div>
+        <div class="flex flex-col sm:flex-row gap-2 shrink-0">
+          <div class="h-9 w-28 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div>
+          <div class="h-9 w-28 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel skeleton singkat -->
+    <div class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-[#12101d]/60 backdrop-blur shadow-sm p-6">
+      <div class="h-5 w-40 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div>
+      <div class="mt-4 space-y-3">
+        {#each Array(10) as _}
+          <div class="h-10 rounded-xl bg-slate-200/60 dark:bg-white/5 animate-pulse"></div>
+        {/each}
+      </div>
+    </div>
+  </section>
 {:else if error}
   <p class="mt-4 text-rose-500">{error}</p>
 {:else if activity}
-  <div class="mx-auto mb-8">
+  <div class="pt-3 mx-auto mb-8">
     <div class="flex justify-between items-start gap-4 mb-4">
       <div class="min-w-0">
-        <h2 class="text-2xl font-bold text-slate-900 dark:text-slate-100">{activity.name}</h2>
-        <div class="mt-2 flex flex-wrap gap-3 text-sm">
-          <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold bg-slate-500/20 text-slate-700 dark:text-slate-300">{activity.kategori}</span>
-          <span class="text-slate-600 dark:text-slate-300">
+        <h2 class="text-2xl font-bold leading-7 text-slate-900 dark:text-slate-100">{activity.name}</h2>
+        <div class="my-2 flex flex-wrap gap-3 text-sm">
+          <div class="flex items-center text-sm text-slate-500 dark:text-slate-300">
+            <svg class="flex-shrink-0 mr-1.5 h-5 w-5 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
+            </svg>
             {new Date(activity.activity_date).toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric' })}
-          </span>
+          </div>
+          <div class="my-2 flex items-center text-sm">
+            <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold bg-slate-500/20 text-slate-700 dark:text-slate-300">
+              {activity.kategori}
+            </span>
+          </div>
         </div>
       </div>
       <div class="flex flex-col sm:flex-row gap-2 shrink-0">
@@ -250,11 +284,11 @@
       </div>
     </div>
 
-    <div class="border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur">
-      <div class="px-4 py-3 border-b border-black/5 dark:border-white/10">
-        <h3 class="text-lg font-medium text-slate-900 dark:text-slate-100">Informasi Aktivitas</h3>
+    <div class="bg-white/90 dark:bg-[#0e0c19]/90 backdrop-blur border border-black/5 dark:border-white/10 shadow-sm overflow-hidden mb-8">
+      <div class="px-4 py-5 sm:px-6 border-b border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur">
+        <h3 class="text-lg leading-6 font-medium text-slate-900 dark:text-slate-100">Informasi Aktivitas</h3>
       </div>
-      <div class="p-4">
+      <div class="px-4 py-3 sm:px-6">
         <ActivityDetail {activity} />
       </div>
     </div>
