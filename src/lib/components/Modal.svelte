@@ -1,10 +1,12 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
-  const dispatch = createEventDispatcher();
+  import { createEventDispatcher, onDestroy } from 'svelte';
+  import { fade, scale } from 'svelte/transition';
+
+  const dispatch = createEventDispatcher<{ close: void }>();
 
   export let show: boolean = false;
   export let title: string = '';
-  export let maxWidth: string = 'max-w-lg';
+  export let maxWidth: string = 'max-w-xl';
 
   function closeModal() {
     show = false;
@@ -12,41 +14,59 @@
   }
 
   function handleKeydown(event: KeyboardEvent) {
-    if (event.key === 'Escape') closeModal();
+    if (event.key === 'Escape' && show) closeModal();
   }
+
+  $: if (show) document.addEventListener('keydown', handleKeydown);
+  $: if (!show) document.removeEventListener('keydown', handleKeydown);
+  onDestroy(() => document.removeEventListener('keydown', handleKeydown));
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
-
 {#if show}
-  <div class="fixed inset-0 flex items-center justify-center bg-black/25 dark:bg-neutral-800/40 z-50 p-8">
+  <div class="fixed inset-0 z-50 p-4 sm:p-8 grid place-items-center" role="dialog" aria-modal="true" aria-label={title}>
+    <!-- Backdrop -->
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div class="absolute inset-0" on:click={closeModal}></div>
-
     <div
-      class="bg-white dark:bg-black border border-transparent dark:border-gray-800 rounded-lg shadow-lg w-full {maxWidth} p-6 relative overflow-y-auto max-h-[90vh] text-gray-900 dark:text-gray-100"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="modal-title"
+      class="absolute inset-0 bg-black/40"
+      on:click={closeModal}
+      transition:fade={{ duration: 200 }}
+    ></div>
+
+    <!-- Panel -->
+    <div
+      transition:fade={{ duration: 200 }}
+      class="relative w-full {maxWidth} rounded-2xl border border-black/5 dark:border-white/10
+             bg-white/90 dark:bg-[#0e0c19]/90 backdrop-blur shadow-xl text-slate-900 dark:text-slate-100
+             max-h-[90vh] overflow-y-auto no-scrollbar"
     >
       <button
-        id="close-modal-btn"
-        class="absolute top-2 right-2 text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100 text-2xl
-               focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-offset-2 dark:focus:ring-offset-gray-800"
+        class="absolute top-2.5 right-2.5 h-9 w-9 grid place-items-center rounded-md
+               border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70
+               text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-50
+               hover:bg-black/5 dark:hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-violet-500"
         on:click={closeModal}
         aria-label="Close modal"
       >
-        &times;
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
       </button>
-      <h2 id="modal-title" class="text-center text-2xl font-bold tracking-tight text-gray-900 dark:text-white mb-6">
-        {title}
-      </h2>
-      <slot></slot>
+
+      {#if title}
+        <div class="px-5 pt-5 pb-3 border-b border-black/5 dark:border-white/10 sticky top-0 z-10
+                    bg-white/70 dark:bg-[#12101d]/70 backdrop-blur rounded-t-2xl">
+          <h2 class="text-base font-semibold">{title}</h2>
+        </div>
+      {/if}
+
+      <div class="px-5 py-4">
+        <slot></slot>
+      </div>
     </div>
   </div>
 {/if}
 
 <style>
-  /* tetap kosong; util Tailwind dipakai */
+  /* Tailwind only */
 </style>
