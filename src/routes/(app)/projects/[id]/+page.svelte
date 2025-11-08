@@ -285,14 +285,38 @@
   let showActivityDetailDrawer = false;
   let selectedActivity: any = null;
   let editingActivity: any = null;
-  let editActivityForm = {
-    name: '', description: '', project_id: '',
-    kategori: '', activity_date: '',
-    attachment: null as File | null,
-    jenis: '', mitra_id: null as string | null,
-    from: '', to: '',
-    attachment_removed: false,
+  type ExistingAtt = {
+    id: number;
+    name: string;
+    description?: string;
+    original_name?: string;
+    url: string;
+    size?: number;
   };
+
+  let editActivityForm: {
+    name: string;
+    description: string;
+    project_id: string | number | '';
+    kategori: string | '';
+    activity_date: string | '';
+    jenis: string | '';
+    mitra_id: number | string | '' | null;
+    from?: string | '';
+    to?: string | '';
+    // multi + existing
+    attachments: File[];
+    attachment_names: string[];
+    attachment_descriptions: string[];
+    existing_attachments: ExistingAtt[];
+    removed_existing_ids: number[];
+  } = {
+    name: '', description: '', project_id: '', kategori: '', activity_date: '',
+    jenis: '', mitra_id: '', from: '', to: '',
+    attachments: [], attachment_names: [], attachment_descriptions: [],
+    existing_attachments: [], removed_existing_ids: []
+  };
+
   let editActivityFileName = '';
 
   function openCreateActivityModal() {
@@ -307,20 +331,70 @@
     showCreateActivityModal = true;
   }
   function openEditActivityModal(activity: any) {
-    editingActivity = { ...activity, activity_date: activity.activity_date ? new Date(activity.activity_date).toISOString().split('T')[0] : '' };
+    editingActivity = { ...activity };
     editActivityForm = {
-      ...editingActivity,
-      project_id: editingActivity.project_id || '',
-      kategori: editingActivity.kategori || '',
-      jenis: editingActivity.jenis || '',
-      mitra_id: editingActivity.mitra_id || '',
-      attachment: null,
-      from: editingActivity.from || '',
-      to: editingActivity.to || '',
-      attachment_removed: false,
+      name: activity?.name ?? '',
+      description: activity?.description ?? '',
+      project_id: activity?.project_id ?? project?.id ?? '',
+      kategori: activity?.kategori ?? '',
+      activity_date: activity?.activity_date ? new Date(activity.activity_date).toISOString().split('T')[0] : '',
+      jenis: activity?.jenis ?? '',
+      mitra_id: activity?.mitra_id ?? '',
+      from: activity?.from ?? '',
+      to: activity?.to ?? '',
+      attachments: [],
+      attachment_names: [],
+      attachment_descriptions: [],
+      existing_attachments: Array.isArray(activity?.attachments)
+        ? activity.attachments.map((a: any) => ({
+            id: a.id,
+            name: a.name ?? a.file_name ?? 'Lampiran',
+            description: a.description ?? '',
+            original_name: a.original_name ?? a.file_name ?? a.name ?? '',
+            url: a.url ?? a.path ?? a.file_path,
+            size: a.size
+          }))
+        : [],
+      removed_existing_ids: []
     };
-    editActivityFileName = activity.attachment ? activity.attachment.split('/').pop() : '';
     showEditActivityModal = true;
+  }
+
+  function buildFormDataForActivity(form: typeof editActivityForm | typeof createActivityForm) {
+    const fd = new FormData();
+
+    const appendScalar = (k: string, v: any) => { if (v !== '' && v !== null && v !== undefined) fd.append(k, String(v)); };
+
+    appendScalar('name', (form as any).name);
+    appendScalar('description', (form as any).description);
+    appendScalar('project_id', (form as any).project_id);
+    appendScalar('kategori', (form as any).kategori);
+    appendScalar('activity_date', (form as any).activity_date);
+    appendScalar('jenis', (form as any).jenis);
+    appendScalar('from', (form as any).from);
+    appendScalar('to', (form as any).to);
+
+    // mitra rules
+    if ((form as any).jenis === 'Internal')      fd.set('mitra_id', '1');
+    else if ((form as any).jenis === 'Customer') fd.set('mitra_id', String(project?.mitra_id ?? ''));
+    else if ((form as any).jenis === 'Vendor' && (form as any).mitra_id) fd.set('mitra_id', String((form as any).mitra_id));
+
+    // New uploads
+    (form as any).attachments?.forEach((file: File, i: number) => fd.append(`attachments[${i}]`, file));
+    (form as any).attachment_names?.forEach((n: string, i: number) => n != null && fd.append(`attachment_names[${i}]`, n));
+    (form as any).attachment_descriptions?.forEach((d: string, i: number) => d != null && fd.append(`attachment_descriptions[${i}]`, d));
+
+    // Existing
+    (form as any).existing_attachments?.forEach((att: any, i: number) => {
+      fd.append(`existing_attachment_ids[${i}]`, String(att.id));
+      fd.append(`existing_attachment_names[${i}]`, att.name ?? '');
+      fd.append(`existing_attachment_descriptions[${i}]`, att.description ?? '');
+    });
+
+    // Removed
+    (form as any).removed_existing_ids?.forEach((rid: number) => fd.append('removed_existing_ids[]', String(rid)));
+
+    return fd;
   }
 
   function openActivityDetailDrawer(activity: any) { selectedActivity = { ...activity }; showActivityDetailDrawer = true; }
@@ -367,41 +441,24 @@
   }
 
   async function handleSubmitCreateActivity() {
-  try {
-    const payload = normalizeActivityPayload(createActivityForm);
-    const fd = buildFD(payload);
-
-    if (payload.jenis === 'Internal')       fd.set('mitra_id', '1');
-    else if (payload.jenis === 'Customer')  fd.set('mitra_id', String(project.mitra_id));
-
-    await apiFetch('/activities', { method: 'POST', body: fd, auth: true });
-    alert('Aktivitas berhasil ditambahkan!');
-    goto(`/projects/${project.id}`);
-    showCreateActivityModal = false;
-    fetchActivities();
-  } catch (err: any) {
-    alert('Error:\n' + (err?.message || 'Gagal menambahkan aktivitas.'));
-  }
+    try {
+      const fd = buildFormDataForActivity(createActivityForm as any);
+      await apiFetch('/activities', { method: 'POST', body: fd, auth: true });
+      alert('Aktivitas berhasil ditambahkan!');
+      showCreateActivityModal = false;
+      fetchActivities();
+    } catch (err: any) {
+      alert('Error:\n' + (err?.message || 'Gagal menambahkan aktivitas.'));
+    }
   }
 
   async function handleSubmitUpdateActivity() {
     if (!editingActivity?.id) return;
     try {
-      const payload = normalizeActivityPayload(editActivityForm);
-      const fd = buildFD(payload);
-
-      if (payload.jenis === 'Internal')       fd.set('mitra_id', '1');
-      else if (payload.jenis === 'Customer')  fd.set('mitra_id', String(project.mitra_id));
-
-      // flag hapus lampiran lama (jika komponenmu memakainya)
-      fd.append('attachment_removed', editActivityForm.attachment_removed ? '1' : '0');
-
-      // method spoofing
+      const fd = buildFormDataForActivity(editActivityForm as any);
       fd.append('_method', 'PUT');
-
       await apiFetch(`/activities/${editingActivity.id}`, { method: 'POST', body: fd, auth: true });
       alert('Aktivitas berhasil diperbarui!');
-      goto(`/projects/${project.id}`);
       showEditActivityModal = false;
       fetchActivities();
     } catch (err: any) {
@@ -574,85 +631,74 @@
     certificateForm = {
       name: '', no_certificate: '', project_id: project?.id ?? '',
       barang_certificate_id: '', status: '',
-      date_of_issue: '', date_of_expired: '', attachment: null, attachment_removed: false,
+      date_of_issue: '', date_of_expired: '',
+      attachments: [] as File[],
+      attachment_names: [] as string[],
+      attachment_descriptions: [] as string[],
+      existing_attachments: [] as any[],
+      removed_existing_ids: [] as number[],
     };
-    certificateFormFileName = '';
     showCreateCertificateModal = true;
   }
+
   function openEditCertificateModal(item: ProjectCertificate) {
     editingCertificate = { ...item };
     certificateForm = {
-      name: item.name ?? '', no_certificate: item.no_certificate ?? '', project_id: project?.id ?? '',
-      barang_certificate_id: item.barang_certificate?.id ?? '',
-      status: item.status ?? '',
-      date_of_issue: item.date_of_issue ? new Date(item.date_of_issue).toISOString().split('T')[0] : '',
-      date_of_expired: item.date_of_expired ? new Date(item.date_of_expired).toISOString().split('T')[0] : '',
-      attachment: null, attachment_removed: false,
+      name: item?.name ?? '',
+      no_certificate: item?.no_certificate ?? '',
+      project_id: project?.id ?? '',
+      barang_certificate_id: item?.barang_certificate?.id ?? '',
+      status: item?.status ?? '',
+      date_of_issue: item?.date_of_issue ? new Date(item.date_of_issue).toISOString().split('T')[0] : '',
+      date_of_expired: item?.date_of_expired ? new Date(item.date_of_expired).toISOString().split('T')[0] : '',
+      attachments: [],
+      attachment_names: [],
+      attachment_descriptions: [],
+      existing_attachments: Array.isArray((item as any)?.attachments)
+        ? (item as any).attachments.map((a: any) => ({
+            id: a.id,
+            name: a.name ?? a.file_name ?? 'Lampiran',
+            description: a.description ?? '',
+            original_name: a.original_name ?? a.file_name ?? a.name ?? '',
+            url: a.url ?? a.path ?? a.file_path,
+            size: a.size
+          }))
+        : [],
+      removed_existing_ids: []
     };
-    certificateFormFileName = item.attachment ? String(item.attachment).split('/').pop() ?? '' : '';
     showEditCertificateModal = true;
   }
+
   function openCertificateDetailDrawer(item: ProjectCertificate) { selectedCertificate = { ...item }; showCertificateDetailDrawer = true; }
 
   function buildCertificateFormData() {
     const fd = new FormData();
     const f = certificateForm ?? {};
+    const put = (k: string, v: any) => { if (v !== '' && v !== null && v !== undefined) fd.append(k, String(v)); };
 
-    // ----- fields dasar -----
-    fd.append('name', f.name || '');
-    fd.append('no_certificate', f.no_certificate || '');
-    if (project?.id) fd.append('project_id', String(project.id));
-    if (f.barang_certificate_id) fd.append('barang_certificate_id', String(f.barang_certificate_id));
-    if (f.status) fd.append('status', f.status);
-    fd.append('date_of_issue', f.date_of_issue || '');
-    fd.append('date_of_expired', f.date_of_expired || '');
+    // fields dasar
+    put('name', f.name);
+    put('no_certificate', f.no_certificate);
+    if (project?.id) put('project_id', project.id);
+    put('barang_certificate_id', f.barang_certificate_id);
+    put('status', f.status);
+    put('date_of_issue', f.date_of_issue);
+    put('date_of_expired', f.date_of_expired);
 
-    // ----- ATTACHMENTS (multi & single, lengkap dengan names + descriptions) -----
-    const files =
-      (Array.isArray(f.attachments) ? f.attachments : null) ||
-      (Array.isArray(f.attachment_files) ? f.attachment_files : null) ||
-      (Array.isArray(f.attachmentFiles) ? f.attachmentFiles : null) ||
-      null;
+    // uploads baru
+    (f.attachments || []).forEach((file: File, i: number) => fd.append(`attachments[${i}]`, file));
+    (f.attachment_names || []).forEach((n: string, i: number) => n != null && fd.append(`attachment_names[${i}]`, n));
+    (f.attachment_descriptions || []).forEach((d: string, i: number) => d != null && fd.append(`attachment_descriptions[${i}]`, d));
 
-    const names =
-      (Array.isArray(f.attachment_names) ? f.attachment_names : null) ||
-      (Array.isArray(f.file_names) ? f.file_names : null) ||
-      (Array.isArray(f.names) ? f.names : null) ||
-      [];
+    // existing (agar lampiran lama tampil & bisa update nama/desc)
+    (f.existing_attachments || []).forEach((att: any, i: number) => {
+      fd.append(`existing_attachment_ids[${i}]`, String(att.id));
+      fd.append(`existing_attachment_names[${i}]`, att.name ?? '');
+      fd.append(`existing_attachment_descriptions[${i}]`, att.description ?? '');
+    });
 
-    const descs =
-      (Array.isArray(f.attachment_descriptions) ? f.attachment_descriptions : null) ||
-      (Array.isArray(f.attachment_descs) ? f.attachment_descs : null) ||
-      (Array.isArray(f.descriptions) ? f.descriptions : null) ||
-      (Array.isArray(f.notes) ? f.notes : null) ||
-      [];
-
-    if (files && files.length) {
-      files.forEach((file: File, idx: number) => {
-        if (!file) return;
-        fd.append('attachments[]', file);
-
-        // pastikan index selaras, berikan fallback aman ('' bukan null)
-        const nm = names[idx] ?? (file as any)?.name ?? '';
-        const dc = descs[idx] ?? '';
-        fd.append('attachment_names[]', nm);
-        fd.append('attachment_descriptions[]', dc);
-      });
-    } else {
-      // single fallback
-      const singleFile = f.attachment || f.attachment_file || f.file || null;
-      if (singleFile) {
-        fd.append('attachment', singleFile);
-        fd.append(
-          'attachment_name',
-          (f.attachment_name || f.file_name || (singleFile as any)?.name || '') as string
-        );
-        // <-- INI YANG PENTING: description jangan null
-        fd.append('attachment_description', (f.attachment_description || f.note || '') as string);
-      }
-    }
-
-    if (f.attachment_removed) fd.append('attachment_removed', '1');
+    // removed (jika user hapus lampiran lama di form)
+    (f.removed_existing_ids || []).forEach((rid: number) => fd.append('removed_existing_ids[]', String(rid)));
 
     return fd;
   }
