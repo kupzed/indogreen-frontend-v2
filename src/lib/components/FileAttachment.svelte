@@ -4,16 +4,16 @@
   export let label: string = 'Attachment Files';
   export let id: string = 'file-attachment';
   export let accept: string =
-    'image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.*,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain';
+    'image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain';
   export let files: File[] = [];
   export let fileNames: string[] = [];
   export let fileDescriptions: string[] = [];
   export let placeholder: string =
-    'PDF, PNG, JPG, DOC, DOCX, XLS, XLSX, TXT, maksimal 10MB per file';
+    'PDF, PNG, JPG, DOC, DOCX, XLS, XLSX, TXT — maksimal 10MB per file';
   export let maxFiles: number = 10;
   export let showRemoveButton: boolean = true;
   export let selectedFileText: string = 'File terpilih';
-  export let maxSizeBytes: number = 10 * 1024 * 1024; // 10MB (match backend)
+  export let maxSizeBytes: number = 10 * 1024 * 1024;
 
   const dispatch = createEventDispatcher();
 
@@ -26,10 +26,7 @@
     const out: File[] = [];
     for (const f of arr) {
       const sig = `${f.name}|${f.size}|${f.lastModified}`;
-      if (!seen.has(sig)) {
-        seen.add(sig);
-        out.push(f);
-      }
+      if (!seen.has(sig)) { seen.add(sig); out.push(f); }
     }
     return out;
   }
@@ -68,21 +65,15 @@
 
   function appendFiles(newOnes: File[]) {
     errorMsg = null;
-    const combined = dedupeBySignature([...files, ...newOnes]);
-    const limited = combined.slice(0, maxFiles);
-    const { ok, reason } = validateFiles(limited);
-    if (!ok) {
-      errorMsg = reason ?? 'File tidak valid.';
-      return;
-    }
-    applyFiles(limited);
+    const combined = dedupeBySignature([...files, ...newOnes]).slice(0, maxFiles);
+    const { ok, reason } = validateFiles(combined);
+    if (!ok) { errorMsg = reason ?? 'File tidak valid.'; return; }
+    applyFiles(combined);
   }
 
   function handleFileChange(e: Event) {
     const input = e.target as HTMLInputElement;
-    const selectedFiles = Array.from(input.files || []);
-    // Tambah, bukan ganti:
-    appendFiles(selectedFiles);
+    appendFiles(Array.from(input.files || []));
   }
 
   function handleRemoveFile(index: number) {
@@ -94,9 +85,7 @@
   }
 
   function handleRemoveAll() {
-    files = [];
-    fileNames = [];
-    fileDescriptions = [];
+    files = []; fileNames = []; fileDescriptions = [];
     applyFiles(files);
     dispatch('clear', {});
   }
@@ -105,26 +94,23 @@
   function handleDragOver(e: DragEvent) { e.preventDefault(); isDragOver = true; }
   function handleDragLeave(e: DragEvent) { if (e.currentTarget === e.target) isDragOver = false; }
   function handleDrop(e: DragEvent) {
-    e.preventDefault();
-    isDragOver = false;
-    const droppedFiles = Array.from(e.dataTransfer?.files || []);
-    if (droppedFiles.length > 0) appendFiles(droppedFiles);
+    e.preventDefault(); isDragOver = false;
+    const dropped = Array.from(e.dataTransfer?.files || []);
+    if (dropped.length) appendFiles(dropped);
   }
 
   function triggerPicker() { fileInput?.click(); }
 
   function formatFileSize(bytes: number): string {
     if (!bytes) return '';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const k = 1024, sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.min(sizes.length - 1, Math.floor(Math.log(bytes) / Math.log(k)));
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
   }
 
   function shortenMiddle(name: string, max = 36) {
     if (!name || name.length <= max) return name;
-    const head = Math.ceil((max - 1) / 2);
-    const tail = Math.floor((max - 1) / 2);
+    const head = Math.ceil((max - 1) / 2), tail = Math.floor((max - 1) / 2);
     return `${name.slice(0, head)}…${name.slice(-tail)}`;
   }
 
@@ -142,31 +128,22 @@
     }
   }
 
-  function updateFileName(index: number, newName: string) {
-    fileNames[index] = newName;
-    dispatch('nameChange', { index, name: newName });
-  }
-  function updateFileDesc(index: number, newVal: string) {
-    fileDescriptions[index] = newVal;
-    dispatch('descriptionChange', { index, description: newVal });
-  }
+  function updateFileName(i: number, v: string) { fileNames[i] = v; dispatch('nameChange', { index: i, name: v }); }
+  function updateFileDesc(i: number, v: string) { fileDescriptions[i] = v; dispatch('descriptionChange', { index: i, description: v }); }
 
   function handleContainerClick(e: MouseEvent) {
-    const target = e.target as HTMLElement;
-    // Abaikan klik pada elemen interaktif supaya tidak membuka file picker
-    if (target.closest('input, textarea, button, [role="button"], a, svg')) {
-      return;
-    }
+    const el = e.target as HTMLElement;
+    if (el.closest('input, textarea, button, [role="button"], a, svg')) return;
     triggerPicker();
   }
 
-  $: totalSize = files.reduce((total, file) => total + file.size, 0);
+  $: totalSize = files.reduce((sum, f) => sum + f.size, 0);
   $: canAddMore = files.length < maxFiles;
 </script>
 
 <div class="w-full">
   <div class="flex items-center justify-between gap-3">
-    <label for={id} class="block text-sm/6 font-medium text-gray-900 dark:text-white">
+    <label for={id} class="block text-sm font-medium text-slate-900 dark:text-slate-100">
       {label} (Opsional) — Maksimal {maxFiles} file
     </label>
 
@@ -175,7 +152,7 @@
         <button
           type="button"
           on:click={triggerPicker}
-          class="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-indigo-500"
+          class="inline-flex items-center gap-1 rounded-md bg-violet-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-violet-700"
         >
           <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M12 4v16M4 12h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -188,10 +165,13 @@
         <button
           type="button"
           on:click={handleRemoveAll}
-          class="inline-flex items-center gap-1 rounded-md bg-gray-200 dark:bg-gray-700 px-2.5 py-1.5 text-xs font-medium text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600"
+          class="inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium
+                 border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70
+                 text-slate-800 dark:text-slate-100 hover:bg-black/5 dark:hover:bg-white/5"
         >
           <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
           Hapus semua
         </button>
@@ -199,24 +179,16 @@
     </div>
   </div>
 
-  <input
-    id={id}
-    type="file"
-    accept={accept}
-    multiple
-    class="sr-only"
-    bind:this={fileInput}
-    on:change={handleFileChange}
-  />
+  <input id={id} type="file" accept={accept} multiple class="sr-only" bind:this={fileInput} on:change={handleFileChange} />
 
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
-    class="mt-2 block w-full rounded-lg border-2 border-dashed p-5 sm:p-6 text-center transition
-          bg-white dark:bg-neutral-900 border-gray-300
-          dark:border-gray-700 cursor-pointer
-          hover:border-indigo-400 hover:bg-gray-50 dark:hover:bg-neutral-800
-          {isDragOver ? 'border-indigo-400 bg-indigo-50 dark:border-indigo-700 dark:bg-indigo-900/20' : ''}"
+    class="mt-2 block w-full rounded-2xl border-2 border-dashed p-5 sm:p-6 text-center transition
+           border-black/10 dark:border-white/10
+           bg-white/70 dark:bg-[#12101d]/70 backdrop-blur cursor-pointer
+           hover:bg-black/5 dark:hover:bg-white/5
+           {isDragOver ? 'border-violet-400 bg-violet-50/60 dark:border-violet-700 dark:bg-violet-900/20' : ''}"
     aria-label="Upload files"
     on:click={handleContainerClick}
     on:dragenter={handleDragEnter}
@@ -227,8 +199,9 @@
     {#if files.length > 0}
       <div class="space-y-3 text-left">
         {#each files as file, index}
-          <div class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <span class="text-xl shrink-0">{getFileIcon(file.name)}</span>
+          <div class="flex items-start gap-3 p-3 rounded-xl border border-black/5 dark:border-white/10
+                      bg-white/70 dark:bg-[#12101d]/70">
+            <span class="text-xl shrink-0"> {getFileIcon(file.name)} </span>
             <div class="min-w-0 flex-1 space-y-2">
               <input
                 type="text"
@@ -238,9 +211,9 @@
                 on:mousedown|stopPropagation
                 on:input={(e) => updateFileName(index, (e.target as HTMLInputElement).value)}
                 placeholder="Nama file"
-                class="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded
-                      bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                      focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                class="w-full px-2 py-1 text-sm rounded-md border border-black/10 dark:border-white/10
+                       bg-white/80 dark:bg-[#0e0c19]/80 text-slate-900 dark:text-slate-100
+                       focus:outline-none focus:ring-2 focus:ring-violet-500"
               />
               <input
                 type="text"
@@ -250,30 +223,31 @@
                 on:mousedown|stopPropagation
                 on:input={(e) => updateFileDesc(index, (e.target as HTMLInputElement).value)}
                 placeholder="Deskripsi file"
-                class="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded
-                      bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                      focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                class="w-full px-2 py-1 text-sm rounded-md border border-black/10 dark:border-white/10
+                       bg-white/80 dark:bg-[#0e0c19]/80 text-slate-900 dark:text-slate-100
+                       focus:outline-none focus:ring-2 focus:ring-violet-500"
               />
-              <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+              <div class="flex items-center justify-between text-xs text-slate-600 dark:text-slate-300">
                 <span title={file.name} class="truncate">{shortenMiddle(file.name)}</span>
                 <span class="ml-2">{formatFileSize(file.size)}</span>
-                <span class="ml-auto flex items-center gap-1">
-                  <svg class="w-3 h-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <span class="ml-auto inline-flex items-center gap-1">
+                  <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                   </svg>
                   {selectedFileText}
                 </span>
               </div>
             </div>
+
             {#if showRemoveButton}
               <button
                 type="button"
                 on:click|stopPropagation={() => handleRemoveFile(index)}
-                class="shrink-0 p-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300
-                      hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition"
+                class="shrink-0 p-1 rounded-md text-rose-600 hover:text-rose-700
+                       hover:bg-rose-50/70 dark:hover:bg-rose-900/20"
                 aria-label={`Hapus ${file.name}`}
               >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                 </svg>
@@ -284,35 +258,32 @@
       </div>
     {:else}
       <div class="space-y-2 pointer-events-none">
-        <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+        <svg class="mx-auto h-12 w-12 text-slate-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
           <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
-        <div>
-          <p class="text-sm text-gray-600 dark:text-gray-300">
-            <span class="font-medium text-indigo-600 dark:text-indigo-400">Klik untuk upload files</span>
-            atau drag & drop
-          </p>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{placeholder}</p>
-        </div>
+        <p class="text-sm text-slate-700 dark:text-slate-200">
+          <span class="font-medium text-violet-700 dark:text-violet-300">Klik untuk upload files</span> atau drag & drop
+        </p>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{placeholder}</p>
       </div>
     {/if}
   </div>
 
   {#if errorMsg}
-    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{errorMsg}</p>
+    <p class="mt-2 text-sm text-rose-600 dark:text-rose-400" aria-live="polite">{errorMsg}</p>
   {/if}
 
   {#if files.length > 0}
     <div class="mt-3 flex items-center justify-between gap-2 flex-wrap">
       <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium
-                    bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
+        <svg class="w-3 h-3 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
         </svg>
         {files.length}/{maxFiles} file terpilih
       </span>
-      <span class="text-xs text-gray-500 dark:text-gray-400">Total: {formatFileSize(totalSize)}</span>
+      <span class="text-xs text-slate-600 dark:text-slate-300">Total: {formatFileSize(totalSize)}</span>
     </div>
   {/if}
 </div>
