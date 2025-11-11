@@ -11,6 +11,7 @@
 
   export let form: {
     name: string;
+    short_desc: string;
     description: string;
     project_id: string | number | '';
     kategori: string | '';
@@ -25,6 +26,9 @@
     existing_attachments?: Array<{ id: number; name: string; description?: string; url: string; size?: number; original_name?: string }>;
     removed_existing_ids?: number[];
   };
+
+  const MAX_SHORT_DESC = 80;
+  $: shortDescLen = form.short_desc?.length ?? 0;
 
   export let projects: Array<{ id: number; name: string; mitra?: { id: number; nama: string } }> = [];
   export let vendors: Array<{ id: number; nama: string }> = [];
@@ -157,6 +161,27 @@
                    bg-white/80 dark:bg-[#0e0c19]/80 px-3 py-2 text-sm text-slate-900 dark:text-slate-100
                    focus:outline-none focus:ring-2 focus:ring-violet-500"
           />
+        </div>
+      </div>
+
+      <div>
+        <label for="{idPrefix}_short_desc" class="block text-sm font-medium text-slate-900 dark:text-slate-100">Deskripsi Singkat (Max: 80 Karakter)</label>
+        <div class="mt-2">
+          <textarea
+            id="{idPrefix}_short_desc"
+            bind:value={form.short_desc}
+            on:input={() => (form.short_desc = (form.short_desc ?? '').slice(0, MAX_SHORT_DESC))}
+            rows="2"
+            required
+            maxlength={MAX_SHORT_DESC}
+            placeholder="Masukkan deskripsi singkat"
+            class="mt-1 block w-full rounded-md border border-black/10 dark:border-white/10
+                 bg-white/80 dark:bg-[#0e0c19]/80 px-3 py-2 text-sm text-slate-900 dark:text-slate-100
+                 focus:outline-none focus:ring-2 focus:ring-violet-500"
+          ></textarea>
+          <div class="mt-1 text-xs text-gray-500 dark:text-gray-400 text-right">
+            {shortDescLen}/{MAX_SHORT_DESC}
+          </div>
         </div>
       </div>
 
