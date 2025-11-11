@@ -1,13 +1,17 @@
 // Simple API helper for calling the Laravel backend
 // - Reads base URL from PUBLIC_API_BASE or VITE_API_BASE, with a sensible local default
 // - Manages JWT storage in localStorage
+import { env as publicEnv } from '$env/dynamic/public';
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
-const DEFAULT_API_BASE = 'http://192.168.1.44:8001/api';
+const DEFAULT_API_BASE = 'http://127.0.0.1:8001/api';
 
 export const API_BASE: string =
-	import.meta.env.PUBLIC_API_BASE ?? import.meta.env.VITE_API_BASE ?? DEFAULT_API_BASE;
+	publicEnv.PUBLIC_API_BASE ??
+	import.meta.env.PUBLIC_API_BASE ??
+	import.meta.env.VITE_API_BASE ??
+	DEFAULT_API_BASE;
 
 const TOKEN_KEY = 'auth_token';
 
