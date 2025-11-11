@@ -273,7 +273,7 @@
   // ===== Create / Edit Activity =====
   let showCreateActivityModal = false;
   let createActivityForm = {
-    name: '', description: '', project_id: '',
+    name: '', short_desc: '', description: '', project_id: '',
     kategori: '', activity_date: '',
     attachment: null as File | null,
     jenis: '', mitra_id: null as string | null,
@@ -296,6 +296,7 @@
 
   let editActivityForm: {
     name: string;
+    short_desc: string;
     description: string;
     project_id: string | number | '';
     kategori: string | '';
@@ -311,7 +312,7 @@
     existing_attachments: ExistingAtt[];
     removed_existing_ids: number[];
   } = {
-    name: '', description: '', project_id: '', kategori: '', activity_date: '',
+    name: '', short_desc: '', description: '', project_id: '', kategori: '', activity_date: '',
     jenis: '', mitra_id: '', from: '', to: '',
     attachments: [], attachment_names: [], attachment_descriptions: [],
     existing_attachments: [], removed_existing_ids: []
@@ -321,7 +322,7 @@
 
   function openCreateActivityModal() {
     createActivityForm = {
-      name: '', description: '', project_id: project.id,
+      name: '', short_desc: '', description: '', project_id: project.id,
       kategori: '', activity_date: '', attachment: null,
       jenis: project.mitra && project.mitra.is_customer ? 'Customer' : '',
       mitra_id: project.mitra && project.mitra.is_customer ? project.mitra.id : null,
@@ -334,6 +335,7 @@
     editingActivity = { ...activity };
     editActivityForm = {
       name: activity?.name ?? '',
+      short_desc: activity?.short_desc ?? '',
       description: activity?.description ?? '',
       project_id: activity?.project_id ?? project?.id ?? '',
       kategori: activity?.kategori ?? '',
@@ -366,6 +368,7 @@
     const appendScalar = (k: string, v: any) => { if (v !== '' && v !== null && v !== undefined) fd.append(k, String(v)); };
 
     appendScalar('name', (form as any).name);
+    appendScalar('short_desc', (form as any).short_desc);
     appendScalar('description', (form as any).description);
     appendScalar('project_id', (form as any).project_id);
     appendScalar('kategori', (form as any).kategori);
@@ -1154,20 +1157,23 @@
                         <table class="min-w-full divide-y divide-slate-200/70 dark:divide-white/10">
                           <thead>
                             <tr>
+                              <th class="px-3 py-3.5 text-left text-sm font-semibold">Tanggal Aktivitas</th>
                               <th class="px-3 py-3.5 text-left text-sm font-semibold">Nama Aktivitas</th>
                               <th class="px-3 py-3.5 text-left text-sm font-semibold">Kategori</th>
                               <th class="px-3 py-3.5 text-left text-sm font-semibold">Jenis</th>
                               <th class="px-3 py-3.5 text-left text-sm font-semibold">Mitra</th>
-                              <th class="px-3 py-3.5 text-left text-sm font-semibold">Tanggal Aktivitas</th>
                               <th class="px-3 py-3.5 text-left text-sm font-semibold">Aksi</th>
                             </tr>
                           </thead>
                           <tbody class="divide-y divide-slate-200/70 dark:divide-white/10">
                             {#each activities as activity (activity.id)}
                               <tr>
+                                <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-600 dark:text-slate-300">
+                                  {new Date(activity.activity_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                </td>
                                 <td class="whitespace-nowrap px-3 py-4 text-sm font-medium">
                                   <a href={`/activities/${activity.id}`} class="text-violet-700 dark:text-violet-300 hover:underline">{activity.name}</a><br>
-                                  <span class="text-xs text-slate-500 dark:text-slate-400">{activity.description.substring(0, 40)}{activity.description.length > 40 ? '...' : ''}</span>
+                                  <span class="text-xs text-slate-500 dark:text-slate-400">{activity.short_desc}</span>
                                 </td>
                                 <td class="whitespace-nowrap px-3 py-4 text-sm">
                                   <span class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold bg-slate-500/15 text-slate-700 dark:text-slate-300">{activity.kategori}</span>
@@ -1177,9 +1183,6 @@
                                   {#if activity.jenis === 'Vendor' && activity.mitra}{activity.mitra.nama}
                                   {:else if activity.jenis === 'Customer' && activity.mitra}{activity.mitra.nama}
                                   {:else}-{/if}
-                                </td>
-                                <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-600 dark:text-slate-300">
-                                  {new Date(activity.activity_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
                                 </td>
                                 <td class="relative whitespace-nowrap px-3 py-4 text-sm">
                                   <div class="flex items-center gap-2">

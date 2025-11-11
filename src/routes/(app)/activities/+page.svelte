@@ -60,6 +60,7 @@
   // form state (ringkas — form lengkap di ActivityFormModal)
   let form: any = {
     name: '',
+    short_desc: '',
     description: '',
     project_id: '',
     kategori: '',
@@ -167,7 +168,7 @@
 
   function openCreateModal() {
     form = {
-      name: '', description: '', project_id: '', kategori: '',
+      name: '', short_desc: '', description: '', project_id: '', kategori: '',
       activity_date: '', jenis: '', mitra_id: null, from: '', to: '',
       attachments: [], attachment_names: [], attachment_descriptions: [],
       existing_attachments: [], removed_existing_ids: []
@@ -178,6 +179,7 @@
     editingActivity = { ...a };
     form = {
       name: a.name ?? '',
+      short_desc: a.short_desc ?? '',
       description: a.description ?? '',
       project_id: a.project_id ?? '',
       kategori: a.kategori ?? '',
@@ -213,6 +215,7 @@
   function buildFormDataForActivity() {
     const fd = new FormData();
     appendScalar(fd, 'name', form.name);
+    appendScalar(fd, 'short_desc', form.short_desc);
     appendScalar(fd, 'description', form.description);
     appendScalar(fd, 'project_id', form.project_id);
     appendScalar(fd, 'kategori', form.kategori);
@@ -560,7 +563,7 @@
                     <tr>
                       <td class="whitespace-nowrap px-3 py-4 text-sm font-medium text-slate-900 dark:text-slate-100">
                         <a href={`/activities/${a.id}`} class="text-violet-700 dark:text-violet-300 hover:underline">{a.name}</a><br>
-                        <span class="text-xs text-slate-500 dark:text-slate-400">{a.description?.substring(0, 40) || ''}{a.description?.length > 40 ? '...' : ''}</span>
+                        <span class="text-xs text-slate-500 dark:text-slate-400">{a.short_desc}</span>
                       </td>
                       <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-600 dark:text-slate-300">
                         {a.project?.name?.substring(0, 25) || '-'}{a.project?.name?.length > 25 ? '...' : ''}
