@@ -5,12 +5,12 @@ import { env as publicEnv } from '$env/dynamic/public';
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
-const DEFAULT_API_BASE = 'http://127.0.0.1:8001/api';
+const DEFAULT_API_BASE = 'http://localhost:8000/api';
 
 export const API_BASE: string =
-	publicEnv.PUBLIC_API_BASE ??
-	import.meta.env.PUBLIC_API_BASE ??
-	import.meta.env.VITE_API_BASE ??
+	publicEnv.PUBLIC_API_BASE_URL ??
+	import.meta.env.PUBLIC_API_BASE_URL ??
+	import.meta.env.VITE_API_BASE_URL ??
 	DEFAULT_API_BASE;
 
 const TOKEN_KEY = 'auth_token';
