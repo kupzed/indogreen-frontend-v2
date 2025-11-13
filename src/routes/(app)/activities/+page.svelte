@@ -25,6 +25,8 @@
   let kategoriFilter = '';
   let dateFromFilter = '';
   let dateToFilter = '';
+  let sortBy: 'created' | 'activity_date' = 'created';
+  let sortDir: 'desc' | 'asc' = 'desc';
 
   // ===== UI STATE =====
   let activeView: 'table' | 'list' = 'table';
@@ -104,7 +106,9 @@
         date_from: dateFromFilter,
         date_to: dateToFilter,
         page: currentPage,
-        per_page: perPage
+        per_page: perPage,
+        sort_by: sortBy,
+        sort_dir: sortDir
       })}`;
       const res: any = await apiFetch(url, { auth: true });
       activities       = res?.data ?? res?.items ?? res ?? [];
@@ -145,14 +149,23 @@
 
   function handleFilterOrSearch() { currentPage = 1; fetchActivities(); }
   function clearFilters() {
-    search = ''; jenisFilter = ''; kategoriFilter = '';
-    dateFromFilter = ''; dateToFilter = '';
-    currentPage = 1; fetchActivities();
+    search = '';
+    jenisFilter = '';
+    kategoriFilter = '';
+    dateFromFilter = '';
+    dateToFilter = '';
+    sortBy = 'created';
+    sortDir = 'desc';
+    currentPage = 1;
+    search = '';
+    fetchActivities();
   }
-  function clearOneFilter(key: 'jenis'|'kategori'|'date') {
+  function clearOneFilter(key: 'jenis'|'kategori'|'date'|'sort'|'search') {
     if (key === 'jenis') jenisFilter = '';
     if (key === 'kategori') kategoriFilter = '';
     if (key === 'date') { dateFromFilter = ''; dateToFilter = ''; }
+    if (key === 'sort') { sortBy = 'created'; sortDir = 'desc'; }
+    if (key === 'search') search = '';
     handleFilterOrSearch();
   }
 
@@ -313,12 +326,22 @@
     jenisFilter ? { key: 'jenis' as const, label: jenisFilter } : null,
     kategoriFilter ? { key: 'kategori' as const, label: kategoriFilter } : null,
     (dateFromFilter || dateToFilter)
-      ? { key: 'date' as const, label:
-          dateFromFilter && dateToFilter
+      ? {
+          key: 'date' as const,
+          label:
+            dateFromFilter && dateToFilter
             ? `${new Date(dateFromFilter).toLocaleDateString('id-ID')} - ${new Date(dateToFilter).toLocaleDateString('id-ID')}`
-            : (dateFromFilter ? `Dari ${new Date(dateFromFilter).toLocaleDateString('id-ID')}` : `Sampai ${new Date(dateToFilter).toLocaleDateString('id-ID')}`) }
-      : null
-  ].filter(Boolean) as Array<{key:'jenis'|'kategori'|'date'; label:string}>;
+            : (dateFromFilter ? `Dari ${new Date(dateFromFilter).toLocaleDateString('id-ID')}` : `Sampai ${new Date(dateToFilter).toLocaleDateString('id-ID')}`)
+        }
+      : null,
+    (sortBy === 'activity_date')
+      ? { key: 'sort' as const, label: `Urut: Dilaksanakan ${sortDir === 'desc' ? 'Terbaru dulu' : 'Terlama dulu'}` }
+      : (sortBy === 'created' && sortDir === 'asc'
+          ? { key: 'sort' as const, label: 'Urut: Create Terlama' }
+          : null),
+    search && { key:'search', label:`Cari: ${search}` },
+  ].filter(Boolean) as Array<{key:'jenis'|'kategori'|'date'|'sort'|'search'; label:string}>;
+
 </script>
 
 <svelte:head><title>Daftar Activity - Indogreen</title></svelte:head>
@@ -337,7 +360,20 @@
           kategoriValue={kategoriFilter}
           dateFrom={dateFromFilter}
           dateTo={dateToFilter}
-          on:update={(e) => { const {key,value}=e.detail; if(key==='jenis') jenisFilter=value; if(key==='kategori') kategoriFilter=value; if(key==='dateFrom') dateFromFilter=value; if(key==='dateTo') dateToFilter=value; handleFilterOrSearch(); }}
+          sortBy={sortBy}
+          sortDir={sortDir}
+          on:update={(e) => {
+            const { key, value } = e.detail;
+            if (key === 'jenis') jenisFilter = value;
+            if (key === 'kategori') kategoriFilter = value;
+            if (key === 'dateFrom') dateFromFilter = value;
+            if (key === 'dateTo') dateToFilter = value;
+
+            if (key === 'sortBy') sortBy = value;
+            if (key === 'sortDir') sortDir = value;
+
+            handleFilterOrSearch();
+          }}
           on:clear={() => clearFilters()}
         />
       </div>
@@ -664,7 +700,19 @@
     kategoriValue={kategoriFilter}
     dateFrom={dateFromFilter}
     dateTo={dateToFilter}
-    on:update={(e) => { const {key,value}=e.detail; if(key==='jenis') jenisFilter=value; if(key==='kategori') kategoriFilter=value; if(key==='dateFrom') dateFromFilter=value; if(key==='dateTo') dateToFilter=value; }}
+    sortBy={sortBy}
+    sortDir={sortDir}
+    on:update={(e) => {
+      const { key, value } = e.detail;
+      if (key === 'jenis') jenisFilter = value;
+      if (key === 'kategori') kategoriFilter = value;
+      if (key === 'dateFrom') dateFromFilter = value;
+      if (key === 'dateTo') dateToFilter = value;
+
+      // ✅ listen to sorting updates
+      if (key === 'sortBy') sortBy = value;
+      if (key === 'sortDir') sortDir = value;
+    }}
     on:clear={() => clearFilters()}
     on:apply={() => { showMobileFilter = false; handleFilterOrSearch(); }}
     on:close={() => (showMobileFilter = false)}

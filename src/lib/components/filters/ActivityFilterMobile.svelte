@@ -18,14 +18,18 @@
   export let vendorOptions: VendorOption[] = [];
   export let vendorValue: number | string | '' = '';
 
+  // ==== sorting props ====
+  export let sortBy: 'created'|'activity_date' = 'created';
+  export let sortDir: 'desc'|'asc' = 'desc';
+
   const dispatch = createEventDispatcher<{
-    update: { key: 'jenis'|'kategori'|'dateFrom'|'dateTo'|'vendor', value: any },
+    update: { key: 'jenis'|'kategori'|'dateFrom'|'dateTo'|'vendor'|'sortBy'|'sortDir', value: any },
     clear: void,
     apply: void,
     close: void
   }>();
 
-  function update(key: 'jenis'|'kategori'|'dateFrom'|'dateTo'|'vendor', value: any) {
+  function update(key: 'jenis'|'kategori'|'dateFrom'|'dateTo'|'vendor'|'sortBy'|'sortDir', value: any) {
     dispatch('update', { key, value });
   }
 </script>
@@ -45,7 +49,22 @@
       </div>
 
       <div class="space-y-4 max-h-[65vh] overflow-y-auto [@supports(-webkit-overflow-scrolling:touch)]:[-webkit-overflow-scrolling:touch]">
-        <FilterSection title="Jenis" showClear={!!jenisValue} startOpen on:clear={() => update('jenis','')}>
+
+        <FilterSection title="Sortir" startOpen>
+          <div class="mt-2">
+            <select
+              bind:value={sortDir}
+              on:change={() => { update('sortBy','created'); update('sortDir', sortDir); }}
+              class="w-full px-3 py-2 rounded-xl text-sm border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70"
+              aria-label="Sortir Create"
+            >
+              <option value="desc">Create: Terbaru</option>
+              <option value="asc">Create: Terlama</option>
+            </select>
+          </div>
+        </FilterSection>
+
+        <FilterSection title="Jenis" showClear={!!jenisValue} on:clear={() => update('jenis','')} startOpen>
           <div class="mt-2 flex flex-wrap gap-2">
             {#each jenisOptions as j}
               <button type="button"
@@ -92,11 +111,36 @@
         </FilterSection>
 
         <FilterSection title="Tanggal" showClear={!!(dateFrom || dateTo)} on:clear={() => { update('dateFrom',''); update('dateTo',''); }}>
-          <div class="mt-2 grid grid-cols-2 gap-2">
-            <input type="date" value={dateFrom} on:change={(e)=>update('dateFrom',(e.target as HTMLInputElement).value)}
-                   class="px-3 py-2 rounded-xl text-sm border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70" />
-            <input type="date" value={dateTo} on:change={(e)=>update('dateTo',(e.target as HTMLInputElement).value)}
-                   class="px-3 py-2 rounded-xl text-sm border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70" />
+          <div class="space-y-3">
+            <div>
+              <span class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Urutkan Tanggal Aktivitas</span>
+              <div class="inline-flex w-full rounded-xl overflow-hidden border border-black/5 dark:border-white/10" role="tablist" aria-label="Urutan tanggal aktivitas">
+                <button
+                  type="button"
+                  on:click={() => { update('sortBy','activity_date'); update('sortDir','desc'); }}
+                  class="w-full px-3 py-1.5 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500
+                         {sortBy==='activity_date' && sortDir==='desc' ? 'bg-indigo-600 text-white' : 'bg-white/70 dark:bg-[#12101d]/70 text-slate-900 dark:text-slate-100'}">
+                  Terbaru dulu
+                </button>
+                <button
+                  type="button"
+                  on:click={() => { update('sortBy','activity_date'); update('sortDir','asc'); }}
+                  class="w-full px-3 py-1.5 text-sm font-semibold transition-colors border-l border-black/5 dark:border-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500
+                         {sortBy==='activity_date' && sortDir==='asc' ? 'bg-indigo-600 text-white' : 'bg-white/70 dark:bg-[#12101d]/70 text-slate-900 dark:text-slate-100'}">
+                  Terlama dulu
+                </button>
+              </div>
+              <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                Gunakan menu <b>Sortir</b> untuk kembali ke urutan <b>Create</b>.
+              </p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+              <input type="date" value={dateFrom} on:change={(e)=>update('dateFrom',(e.target as HTMLInputElement).value)}
+                     class="px-3 py-2 rounded-xl text-sm border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70" />
+              <input type="date" value={dateTo} on:change={(e)=>update('dateTo',(e.target as HTMLInputElement).value)}
+                     class="px-3 py-2 rounded-xl text-sm border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70" />
+            </div>
           </div>
         </FilterSection>
       </div>
