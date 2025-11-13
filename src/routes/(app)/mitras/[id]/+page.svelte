@@ -58,6 +58,9 @@
   const perPageOptions = [10, 25, 50, 100];
   let bcInitialized = false;
 
+  let bcSortBy: 'created' = 'created';
+  let bcSortDir: 'asc' | 'desc' = 'desc';
+
   let bcActiveView: 'table' | 'list' = 'table';
   const views: Array<'table' | 'list'> = ['table', 'list'];
   function handleViewKeydown(e: KeyboardEvent) {
@@ -152,13 +155,15 @@
         search: bcSearch,
         mitra_id: mitra.id,
         page: bcCurrentPage,
-        per_page: perPage
+        per_page: perPage,
+        sort_by: bcSortBy,
+        sort_dir: bcSortDir
       })}`;
       const res: any = await apiFetch(url, { auth: true });
       bcItems = res?.data ?? res?.items ?? res ?? [];
       bcCurrentPage = res?.pagination?.current_page ?? res?.current_page ?? 1;
-      bcLastPage = res?.pagination?.last_page ?? res?.last_page ?? 1;
-      bcTotalItems = res?.pagination?.total ?? res?.total ?? (Array.isArray(bcItems) ? bcItems.length : 0);
+      bcLastPage    = res?.pagination?.last_page   ?? res?.last_page   ?? 1;
+      bcTotalItems  = res?.pagination?.total       ?? res?.total       ?? (Array.isArray(bcItems) ? bcItems.length : 0);
     } catch (err: any) {
       bcError = err?.message || 'Gagal memuat data.';
       console.error(err);
@@ -167,6 +172,7 @@
     }
   }
 
+  function bcHandleSortChange() { bcCurrentPage = 1; fetchBarangCertificates(); }
   function bcHandleSearchChange() { bcCurrentPage = 1; fetchBarangCertificates(); }
   function bcGoToPage(page: number) { if (page > 0 && page <= bcLastPage) { bcCurrentPage = page; fetchBarangCertificates(); } }
 
@@ -223,10 +229,23 @@
     }
   }
 
-  let bcFilterChips: Array<{ key: string; label: string }> = [];
-  $: bcFilterChips = [bcSearch && { key: 'search', label: `Cari: ${bcSearch}` }].filter(Boolean) as any;
-  function clearOneBcFilter(key: string) { if (key === 'search') bcSearch = ''; bcHandleSearchChange(); }
-  function clearAllBcFilters() { bcSearch = ''; bcHandleSearchChange(); }
+  let bcFilterChips: Array<{ key: 'search' | 'sort'; label: string }> = [];
+  $: bcFilterChips = [
+    bcSearch && { key: 'search', label: `Cari: ${bcSearch}` },
+    bcSortDir === 'asc' && { key: 'sort', label: 'Urut: Create Terlama' }
+  ].filter(Boolean) as Array<{ key: 'search' | 'sort'; label: string }>;
+
+  function clearOneBcFilter(key: 'search' | 'sort') {
+    if (key === 'search') bcSearch = '';
+    if (key === 'sort')   bcSortDir = 'desc'; // kembali ke default "Create Terbaru"
+    bcHandleSearchChange();
+  }
+  function clearAllBcFilters() {
+    bcSearch = '';
+    bcSortDir = 'desc';
+    bcHandleSearchChange();
+  }
+
 
   onMount(() => {
     if (!getToken()) { goto('/auth/login'); return; }
@@ -367,6 +386,19 @@
             <div class="border border-black/5 dark:border-white/10 divide-y divide-black/5 dark:divide-white/10 sticky z-30 top-[60px] sm:top-[72px]">
               <div class="flex items-center gap-2 flex-nowrap bg-white/70 dark:bg-[#12101d]/70 backdrop-blur px-2 py-2">
                 <div class="flex items-center gap-2 shrink-0">
+                  <label class="sr-only" for="bc-sort">Sortir</label>
+                  <select
+                    id="bc-sort"
+                    bind:value={bcSortDir}
+                    on:change={bcHandleSortChange}
+                    class="h-9 px-3 rounded-md text-sm border border-black/5 dark:border-white/10
+                          bg-white/70 dark:bg-[#12101d]/70 text-slate-800 dark:text-slate-100 shrink-0"
+                    aria-label="Sortir berdasarkan tanggal buat"
+                    title="Sortir berdasarkan tanggal buat"
+                  >
+                    <option value="desc">Terbaru</option>
+                    <option value="asc">Terlama</option>
+                  </select>
                   <div class="bg-slate-100/70 dark:bg-white/5 border border-black/5 dark:border-white/10 rounded-md inline-flex" role="tablist" aria-label="Switch view" tabindex="0" on:keydown={handleViewKeydown}>
                     <button
                       on:click={() => (bcActiveView = 'table')}

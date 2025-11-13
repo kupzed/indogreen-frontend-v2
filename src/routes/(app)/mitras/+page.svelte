@@ -18,10 +18,8 @@
 
   // ====== FILTER / QUERY STATE ======
   let search = '';
-  // 'pribadi' | 'perusahaan' | 'customer' | 'vendor' | ''
   let kategoriFilter = '';
-  let dateFromFilter = '';
-  let dateToFilter = '';
+  let sortDir: 'desc' | 'asc' = 'desc'; // ⬅️ NEW
 
   // ====== UI STATE ======
   // view toggle
@@ -37,13 +35,12 @@
   }
 
   // sidebar & mobile modal
-  let showSidebar = true;        // desktop toggle (default tampil)
-  let showMobileFilter = false;  // mobile drawer
+  let showSidebar = true;
+  let showMobileFilter = false;
 
-  function applyUpdate(key: 'kategori'|'dateFrom'|'dateTo', value: any) {
+  function applyUpdate(key: 'kategori'|'sortDir', value: any) { // ⬅️ update type
     if (key === 'kategori') kategoriFilter = value as string;
-    if (key === 'dateFrom') dateFromFilter = value as string;
-    if (key === 'dateTo') dateToFilter = value as string;
+    if (key === 'sortDir') sortDir = value as 'desc'|'asc';
   }
 
   // desktop: update + fetch
@@ -113,10 +110,10 @@
       const url = `/mitras?${qs({
         search,
         kategori: kategoriFilter,
-        date_from: dateFromFilter,
-        date_to: dateToFilter,
         page: currentPage,
-        per_page: perPage
+        per_page: perPage,
+        sort_by: 'created',
+        sort_dir: sortDir,
       })}`;
 
       const res: any = await apiFetch(url, { auth: true });
@@ -142,15 +139,15 @@
   function clearFilters() {
     search = '';
     kategoriFilter = '';
-    dateFromFilter = '';
-    dateToFilter = '';
+    sortDir = 'desc';
     currentPage = 1;
     fetchMitras();
   }
 
-  function clearOneFilter(key: 'kategori'|'date') {
+  function clearOneFilter(key: 'kategori'|'sort'|'search') {
     if (key === 'kategori') kategoriFilter = '';
-    if (key === 'date') { dateFromFilter = ''; dateToFilter = ''; }
+    if (key === 'sort') { sortDir = 'desc'; }
+    if (key === 'search') search = '';
     handleFilterOrSearch();
   }
 
@@ -228,13 +225,9 @@
   // Chip aktif (atas tabel)
   $: activeFilterChips = [
     kategoriFilter ? { key: 'kategori', label: 'Kategori: ' + (kategoriFilter[0].toUpperCase() + kategoriFilter.slice(1)) } : null,
-    (dateFromFilter || dateToFilter)
-      ? { key: 'date', label:
-          dateFromFilter && dateToFilter
-            ? `${new Date(dateFromFilter).toLocaleDateString('id-ID')} - ${new Date(dateToFilter).toLocaleDateString('id-ID')}`
-            : (dateFromFilter ? `Dari ${new Date(dateFromFilter).toLocaleDateString('id-ID')}` : `Sampai ${new Date(dateToFilter).toLocaleDateString('id-ID')}`) }
-      : null
-  ].filter(Boolean) as Array<{key:'kategori'|'date'; label:string}>;
+    (sortDir === 'asc' ? { key: 'sort', label: 'Urut: Create Terlama' } : null),
+    search && { key: 'search', label: `Cari: ${search}` },
+  ].filter(Boolean) as Array<{key:'kategori'|'sort'|'search'; label:string}>;
 </script>
 
 <svelte:head><title>Daftar Mitra - Indogreen</title></svelte:head>
@@ -249,8 +242,7 @@
         <MitraFilterDesktop
           kategoriOptions={mitraKategoriOptions}
           kategoriValue={kategoriFilter}
-          dateFrom={dateFromFilter}
-          dateTo={dateToFilter}
+          sortDir={sortDir}
           on:update={onDesktopUpdate}
           on:clear={onDesktopClear}
         />
@@ -557,8 +549,7 @@
     bind:open={showMobileFilter}
     kategoriOptions={mitraKategoriOptions}
     kategoriValue={kategoriFilter}
-    dateFrom={dateFromFilter}
-    dateTo={dateToFilter}
+    sortDir={sortDir}
     on:update={onMobileUpdate}
     on:clear={onMobileClear}
     on:apply={onMobileApply}

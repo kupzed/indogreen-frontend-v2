@@ -31,6 +31,7 @@
   // ====== FILTER / QUERY STATE ======
   let search = '';
   let mitraFilter: number | '' = '';
+  let sortDir: 'desc'|'asc' = 'desc';
 
   // ====== UI STATE ======
   let activeView: 'table' | 'list' = 'table';
@@ -97,7 +98,9 @@
         search,
         mitra_id: mitraFilter || '',
         page: currentPage,
-        per_page: perPage
+        per_page: perPage,
+        sort_by: 'created',
+        sort_dir: sortDir,
       })}`;
 
       const res: any = await apiFetch(url, { auth: true });
@@ -124,6 +127,7 @@
   function clearFilters() {
     search = '';
     mitraFilter = '';
+    sortDir = 'desc';
     currentPage = 1;
     fetchList();
   }
@@ -131,6 +135,8 @@
   // desktop: update + fetch
   function onDesktopUpdate(e: CustomEvent<{key:any, value:any}>) {
     if (e.detail.key === 'mitra') mitraFilter = e.detail.value as number | '';
+    if (e.detail.key === 'sortDir') sortDir = e.detail.value as 'desc' | 'asc';
+    if (e.detail.key === 'search') search = e.detail.value as string | '';
     handleFilterOrSearch();
   }
   function onDesktopClear() { clearFilters(); }
@@ -138,6 +144,9 @@
   // mobile: update state saja, fetch saat Done
   function onMobileUpdate(e: CustomEvent<{key:any, value:any}>) {
     if (e.detail.key === 'mitra') mitraFilter = e.detail.value as number | '';
+    if (e.detail.key === 'sortDir') sortDir = e.detail.value as 'desc' | 'asc';
+    if (e.detail.key === 'search') search = e.detail.value as string | '';
+    handleFilterOrSearch();
   }
   function onMobileClear() { clearFilters(); }
   function onMobileApply() {
@@ -227,8 +236,10 @@
 
   // Chips aktif
   $: activeFilterChips = [
-    mitraFilter ? { key: 'mitra' as const, label: getMitraNameById(mitraFilter) || 'Mitra' } : null
-  ].filter(Boolean) as Array<{ key: 'mitra'; label: string }>;
+    mitraFilter ? { key: 'mitra' as const, label: getMitraNameById(mitraFilter) || 'Mitra' } : null,
+    (sortDir === 'asc' ? { key: 'sort', label: 'Urut: Create Terlama' } : null),
+    search && { key: 'search', label: `Cari: ${search}` },
+  ].filter(Boolean) as Array<{ key: 'mitra' | 'sort' | 'search'; label: string }>;
 </script>
 
 <svelte:head><title>Daftar Barang Sertifikat - Indogreen</title></svelte:head>
@@ -243,6 +254,7 @@
         <BarangCertificateFilterDesktop
           {mitras}
           mitraValue={mitraFilter}
+          sortDir={sortDir}
           on:update={onDesktopUpdate}
           on:clear={onDesktopClear}
         />
@@ -321,7 +333,16 @@
           {#each activeFilterChips as chip}
             <span class="inline-flex items-center gap-2 rounded-full border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur px-3 py-1 text-xs font-medium">
               {chip.label}
-              <button type="button" aria-label="Hapus filter" class="opacity-70 hover:opacity-100" on:click={() => { mitraFilter = ''; handleFilterOrSearch(); }}>✕</button>
+              <button
+                type="button"
+                aria-label="Hapus filter"
+                class="opacity-70 hover:opacity-100"
+                on:click={() => {
+                  if (chip.key === 'mitra') mitraFilter = '';
+                  if (chip.key === 'sort') sortDir = 'desc';
+                  if (chip.key === 'search') search = '';
+                  handleFilterOrSearch();
+                }}>✕</button>
             </span>
           {/each}
           <button type="button" class="text-xs font-medium text-violet-700 dark:text-violet-300 hover:underline" on:click={clearFilters}>Clear</button>
@@ -529,6 +550,7 @@
     bind:open={showMobileFilter}
     {mitras}
     mitraValue={mitraFilter}
+    sortDir={sortDir}
     on:update={onMobileUpdate}
     on:clear={onMobileClear}
     on:apply={onMobileApply}
