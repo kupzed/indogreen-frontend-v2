@@ -115,6 +115,8 @@
   let activityDateFromFilter = '';
   let activityDateToFilter = '';
   let showActivityDateFilter = false;
+  let activitySortBy: 'created' | 'activity_date' = 'created';
+  let activitySortDir: 'asc' | 'desc' = 'desc';
 
   // ===== Activity: chips untuk filter aktif =====
   let activityFilterChips: Array<{key:string; label:string}> = [];
@@ -122,7 +124,20 @@
     activityJenisFilter && { key:'jenis',   label:`Jenis: ${activityJenisFilter}` },
     activityVendorFilter && activityJenisFilter==='Vendor' && { key:'vendor',  label:`Vendor: ${projectVendorOptions.find(v=>v.id==activityVendorFilter)?.nama ?? '-'}` },
     activityKategoriFilter && { key:'kategori', label:`Kategori: ${activityKategoriFilter}` },
-    (activityDateFromFilter || activityDateToFilter) && { key:'date', label: `Tanggal: ${activityDateFromFilter?new Date(activityDateFromFilter).toLocaleDateString('id-ID'):'...'} - ${activityDateToFilter?new Date(certificateDateToFilter||activityDateToFilter).toLocaleDateString('id-ID'):'...'}` },
+    (activityDateFromFilter || activityDateToFilter)
+      ? {
+          key: 'date' as const,
+          label:
+            activityDateFromFilter && activityDateToFilter
+            ? `${new Date(activityDateFromFilter).toLocaleDateString('id-ID')} - ${new Date(activityDateToFilter).toLocaleDateString('id-ID')}`
+            : (activityDateFromFilter ? `Dari ${new Date(activityDateFromFilter).toLocaleDateString('id-ID')}` : `Sampai ${new Date(activityDateToFilter).toLocaleDateString('id-ID')}`)
+        }
+      : null,
+    (activitySortBy === 'activity_date')
+      ? { key: 'sort' as const, label: `Urut: Dilaksanakan ${activitySortDir === 'desc' ? 'Terbaru dulu' : 'Terlama dulu'}` }
+      : (activitySortBy === 'created' && activitySortDir === 'asc'
+          ? { key: 'sort' as const, label: 'Urut: Create Terlama' }
+          : null),
     activitySearch && { key:'search', label:`Cari: ${activitySearch}` },
   ].filter(Boolean) as any;
 
@@ -131,6 +146,7 @@
     if (key==='vendor'){ activityVendorFilter=''; }
     if (key==='kategori'){ activityKategoriFilter=''; }
     if (key==='date'){ activityDateFromFilter=''; activityDateToFilter=''; }
+    if (key === 'sort') { activitySortBy = 'created'; activitySortDir = 'desc'; }
     if (key==='search'){ activitySearch=''; }
     handleActivityFilterOrSearch();
   }
@@ -166,7 +182,9 @@
         date_from: activityDateFromFilter,
         date_to: activityDateToFilter,
         page: activityCurrentPage,
-        per_page: activityPerPage
+        per_page: activityPerPage,
+        sort_by: activitySortBy,
+        sort_dir: activitySortDir,
       })}`;
 
       const res: any = await apiFetch(url, { auth: true });
@@ -193,6 +211,8 @@
     activitySearch = '';
     activityDateFromFilter = '';
     activityDateToFilter = '';
+    activitySortBy = 'created';
+    activitySortDir = 'desc';
     activityCurrentPage = 1;
     fetchActivities();
   }
@@ -522,23 +542,47 @@
   let errorCertificates = '';
   let certificateSearch = '';
   let certificateStatusFilter: '' | ProjectCertificate['status'] = '';
+  let certificateSortBy: 'created' | 'date_of_issue' | 'date_of_expired' = 'created';
+  let certificateSortDir: 'asc' | 'desc' = 'desc';
+  let certificateDateSortField: 'date_of_issue' | 'date_of_expired' = 'date_of_issue';
   // ===== Certificates: chips untuk filter aktif =====
   let certificateFilterChips: Array<{key:string; label:string}> = [];
   $: certificateFilterChips = [
     certificateStatusFilter && { key:'status', label:`Status: ${certificateStatusFilter}` },
-    (certificateDateFromFilter || certificateDateToFilter) && { key:'date', label:`Terbit: ${certificateDateFromFilter?new Date(certificateDateFromFilter).toLocaleDateString('id-ID'):'...'} - ${certificateDateToFilter?new Date(certificateDateToFilter).toLocaleDateString('id-ID'):'...'}` },
+    (certificateDateFromFilter || certificateDateToFilter)
+      ? {
+          key: 'date' as const,
+          label:
+            certificateDateFromFilter && certificateDateToFilter
+              ? `${new Date(certificateDateFromFilter).toLocaleDateString('id-ID')} - ${new Date(certificateDateToFilter).toLocaleDateString('id-ID')}`
+              : (certificateDateFromFilter ? `Dari ${new Date(certificateDateFromFilter).toLocaleDateString('id-ID')}` : `Sampai ${new Date(certificateDateToFilter).toLocaleDateString('id-ID')}`)
+        }
+      : null,
+    (certificateSortBy !== 'created' || (certificateSortBy === 'created' && certificateSortDir === 'asc'))
+      ? {
+          key: 'sort' as const,
+          label:
+            (certificateSortBy === 'created')
+              ? `Urut: Create ${certificateSortDir === 'desc' ? 'Terbaru' : 'Terlama'}`
+              : `Urut: ${certificateSortBy === 'date_of_issue' ? 'Tanggal Terbit' : 'Tanggal Expired'} ${certificateSortDir === 'desc' ? 'Terbaru dulu' : 'Terlama dulu'}`
+        }
+      : null,
     certificateSearch && { key:'search', label:`Cari: ${certificateSearch}` },
   ].filter(Boolean) as any;
 
   function clearOneCertificateFilter(key:string){
     if (key==='status'){ certificateStatusFilter=''; }
     if (key==='date'){ certificateDateFromFilter=''; certificateDateToFilter=''; }
+    if (key === 'sort') { certificateSortBy = 'created'; certificateSortDir = 'desc'; certificateDateSortField = 'date_of_issue'; }
     if (key==='search'){ certificateSearch=''; }
     handleCertificateFilterOrSearch();
   }
   function clearAllCertificateFilters(){
     certificateDateFromFilter=''; certificateDateToFilter='';
     certificateStatusFilter=''; certificateSearch='';
+    certificateSortBy = 'created';
+    certificateSortDir = 'desc';
+    certificateDateSortField = 'date_of_issue';
     handleCertificateFilterOrSearch();
   }
   let certificateCurrentPage = 1;
@@ -580,7 +624,9 @@
         date_from: certificateDateFromFilter,
         date_to: certificateDateToFilter,
         page: certificateCurrentPage,
-        per_page: certificatePerPage
+        per_page: certificatePerPage,
+        sort_by: certificateSortBy,
+        sort_dir: certificateSortDir,
       })}`;
       const res: any = await apiFetch(url, { auth: true });
       certificates           = res?.data ?? res?.items ?? res ?? [];
@@ -912,15 +958,20 @@
                     vendorValue={activityVendorFilter}
                     dateFrom={activityDateFromFilter}
                     dateTo={activityDateToFilter}
-                    on:update={(e)=>{ const {key,value}=e.detail; 
-                      if(key==='jenis') activityJenisFilter=value; 
-                      if(key==='kategori') activityKategoriFilter=value; 
-                      if(key==='vendor') activityVendorFilter=value;
-                      if(key==='dateFrom') activityDateFromFilter=value; 
-                      if(key==='dateTo') activityDateToFilter=value; 
+                    sortBy={activitySortBy}
+                    sortDir={activitySortDir}
+                    on:update={(e) => {
+                      const { key, value } = e.detail;
+                      if (key === 'jenis') activityJenisFilter = value;
+                      if (key === 'kategori') activityKategoriFilter = value;
+                      if (key === 'vendor') activityVendorFilter = value;
+                      if (key === 'dateFrom') activityDateFromFilter = value;
+                      if (key === 'dateTo') activityDateToFilter = value;
+                      if (key === 'sortBy') activitySortBy = value;
+                      if (key === 'sortDir') activitySortDir = value;
                       handleActivityFilterOrSearch();
                     }}
-                    on:clear={() => { clearAllActivityFilters(); }}
+                    on:clear={() => clearAllActivityFilters()}
                   />
                 </div>
               </div>
@@ -1235,12 +1286,19 @@
               vendorValue={activityVendorFilter}
               dateFrom={activityDateFromFilter}
               dateTo={activityDateToFilter}
-              on:update={(e)=>{ const {key,value}=e.detail; 
-                if(key==='jenis') activityJenisFilter=value;
-                if(key==='kategori') activityKategoriFilter=value;
-                if(key==='vendor') activityVendorFilter=value;
-                if(key==='dateFrom') activityDateFromFilter=value;
-                if(key==='dateTo') activityDateToFilter=value;
+              sortBy={activitySortBy}
+              sortDir={activitySortDir}
+              on:update={(e) => {
+                const { key, value } = e.detail;
+                if (key === 'jenis') activityJenisFilter = value;
+                if (key === 'kategori') activityKategoriFilter = value;
+                if (key === 'vendor') activityVendorFilter = value;
+                if (key === 'dateFrom') activityDateFromFilter = value;
+                if (key === 'dateTo') activityDateToFilter = value;
+
+                // ✅ listen to sorting updates
+                if (key === 'sortBy') activitySortBy = value;
+                if (key === 'sortDir') activitySortDir = value;
               }}
               on:clear={() => { clearAllActivityFilters(); }}
               on:apply={() => { showMobileFilter = false; handleActivityFilterOrSearch(); }}
@@ -1262,13 +1320,27 @@
                     statusValue={certificateStatusFilter}
                     dateFrom={certificateDateFromFilter}
                     dateTo={certificateDateToFilter}
-                    on:update={(e)=>{ const {key,value}=e.detail;
-                      if(key==='status') certificateStatusFilter=value;
-                      if(key==='dateFrom') certificateDateFromFilter=value;
-                      if(key==='dateTo') certificateDateToFilter=value;
+                    sortBy={certificateSortBy}
+                    sortDir={certificateSortDir}
+                    dateSortField={certificateDateSortField}
+                    on:update={(e) => {
+                      const { key, value } = e.detail as {
+                        key:'status'|'dateFrom'|'dateTo'|'sortBy'|'sortDir'|'dateSortField',
+                        value:any
+                      };
+                      if (key==='status') certificateStatusFilter = value as typeof certificateStatusFilter;
+                      if (key==='dateFrom') certificateDateFromFilter = value as string;
+                      if (key==='dateTo') certificateDateToFilter = value as string;
+                      if (key==='sortBy') certificateSortBy = value as typeof certificateSortBy;
+                      if (key==='sortDir') certificateSortDir = value as typeof certificateSortDir;
+                      if (key==='dateSortField') {
+                        certificateDateSortField = value as typeof certificateDateSortField;
+                        // jika sedang sorting by date, pindahkan field saat user ganti pilihan
+                        if (certificateSortBy !== 'created') certificateSortBy = certificateDateSortField;
+                      }
                       handleCertificateFilterOrSearch();
                     }}
-                    on:clear={() => { clearAllCertificateFilters(); }}
+                    on:clear={() => clearAllCertificateFilters()}
                   />
                 </div>
               </div>
@@ -1571,10 +1643,23 @@
               statusValue={certificateStatusFilter}
               dateFrom={certificateDateFromFilter}
               dateTo={certificateDateToFilter}
-              on:update={(e)=>{ const {key,value}=e.detail;
-                if(key==='status') certificateStatusFilter=value;
-                if(key==='dateFrom') certificateDateFromFilter=value;
-                if(key==='dateTo') certificateDateToFilter=value;
+              sortBy={certificateSortBy}
+              sortDir={certificateSortDir}
+              dateSortField={certificateDateSortField}
+              on:update={(e) => {
+                const { key, value } = e.detail as {
+                  key:'status'|'dateFrom'|'dateTo'|'sortBy'|'sortDir'|'dateSortField',
+                  value:any
+                };
+                if (key==='status') certificateStatusFilter = value as typeof certificateStatusFilter;
+                if (key==='dateFrom') certificateDateFromFilter = value as string;
+                if (key==='dateTo') certificateDateToFilter = value as string;
+                if (key==='sortBy') certificateSortBy = value as typeof certificateSortBy;
+                if (key==='sortDir') certificateSortDir = value as typeof certificateSortDir;
+                if (key==='dateSortField') {
+                  certificateDateSortField = value as typeof certificateDateSortField;
+                  if (certificateSortBy !== 'created') certificateSortBy = certificateDateSortField;
+                }
               }}
               on:clear={() => { clearAllCertificateFilters(); }}
               on:apply={() => { showMobileFilter = false; handleCertificateFilterOrSearch(); }}
