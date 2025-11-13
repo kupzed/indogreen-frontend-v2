@@ -23,6 +23,10 @@
   let dateFromFilter = '';
   let dateToFilter = '';
 
+  // NEW: kontrol sorting (sesuai baseline)
+  let sortBy: 'created' | 'start_date' = 'created';
+  let sortDir: 'desc' | 'asc' = 'desc';
+
   // ====== UI STATE ======
   // view toggle
   let activeView: 'table' | 'list' = 'table';
@@ -40,12 +44,17 @@
   let showSidebar = true;        // desktop toggle
   let showMobileFilter = false;  // mobile modal
 
-  function applyUpdate(key: 'status'|'kategori'|'cert'|'dateFrom'|'dateTo', value: any) {
+  function applyUpdate(
+    key: 'status' | 'kategori' | 'cert' | 'dateFrom' | 'dateTo' | 'sortBy' | 'sortDir',
+    value: any
+  ) {
     if (key === 'status') statusFilter = value as string;
     if (key === 'kategori') kategoriFilter = value as string;
     if (key === 'cert') certProjectFilter = Boolean(value);
     if (key === 'dateFrom') dateFromFilter = value as string;
     if (key === 'dateTo') dateToFilter = value as string;
+    if (key === 'sortBy') sortBy = value as 'created' | 'start_date';
+    if (key === 'sortDir') sortDir = value as 'desc' | 'asc';
   }
 
   // desktop: update + fetch
@@ -111,7 +120,9 @@
         date_from: dateFromFilter,
         date_to: dateToFilter,
         page: currentPage,
-        per_page: perPage
+        per_page: perPage,
+        sort_by: sortBy,
+        sort_dir: sortDir
       })}`;
 
       const res: any = await apiFetch(url, { auth: true });
@@ -151,15 +162,20 @@
     certProjectFilter = false;
     dateFromFilter = '';
     dateToFilter = '';
+    sortBy = 'created';
+    sortDir = 'desc';
+    search = '';
     currentPage = 1;
     fetchProjects();
   }
 
-  function clearOneFilter(key: 'status'|'kategori'|'cert'|'date') {
+  function clearOneFilter(key: 'status'|'kategori'|'cert'|'date'|'sort'|'search') {
     if (key === 'status') statusFilter = '';
     if (key === 'kategori') kategoriFilter = '';
     if (key === 'cert') certProjectFilter = false;
     if (key === 'date') { dateFromFilter = ''; dateToFilter = ''; }
+    if (key === 'sort') { sortBy = 'created'; sortDir = 'desc'; }
+    if (key === 'search') search = '';
     handleFilterOrSearch();
   }
 
@@ -262,7 +278,7 @@
     }
   }
 
-  // Chip aktif untuk ditampilkan di atas tabel
+  // 🔁 ganti reaktif chips jadi include chip sorting
   $: activeFilterChips = [
     statusFilter ? { key: 'status', label: statusFilter } : null,
     kategoriFilter ? { key: 'kategori', label: kategoriFilter } : null,
@@ -272,8 +288,12 @@
           dateFromFilter && dateToFilter
             ? `${new Date(dateFromFilter).toLocaleDateString('id-ID')} - ${new Date(dateToFilter).toLocaleDateString('id-ID')}`
             : (dateFromFilter ? `Dari ${new Date(dateFromFilter).toLocaleDateString('id-ID')}` : `Sampai ${new Date(dateToFilter).toLocaleDateString('id-ID')}`) }
-      : null
-  ].filter(Boolean) as Array<{key:'status'|'kategori'|'cert'|'date'; label:string}>;
+      : null,
+    (sortBy === 'start_date')
+      ? { key: 'sort', label: `Urut: Dilaksanakan ${sortDir === 'desc' ? 'Terbaru dulu' : 'Terlama dulu'}` }
+      : (sortDir === 'asc' ? { key: 'sort', label: 'Urut: Create Terlama' } : null),
+    search && { key: 'search', label: `Cari: ${search}` },
+  ].filter(Boolean) as Array<{key:'status'|'kategori'|'cert'|'date'|'sort'|'search'; label:string}>;
 </script>
 
 <svelte:head><title>Daftar Project - Indogreen</title></svelte:head>
@@ -299,6 +319,8 @@
           certValue={certProjectFilter}
           dateFrom={dateFromFilter}
           dateTo={dateToFilter}
+          sortBy={sortBy}
+          sortDir={sortDir}
           on:update={onDesktopUpdate}
           on:clear={onDesktopClear}
         />
@@ -684,6 +706,8 @@
     certValue={certProjectFilter}
     dateFrom={dateFromFilter}
     dateTo={dateToFilter}
+    sortBy={sortBy}
+    sortDir={sortDir}
     on:update={onMobileUpdate}
     on:clear={onMobileClear}
     on:apply={onMobileApply}

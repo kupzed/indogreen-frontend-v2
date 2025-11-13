@@ -13,15 +13,28 @@
   export let dateFrom = '';
   export let dateTo = '';
 
+  // NEW: sorting props
+  export let sortBy: 'created'|'start_date' = 'created';
+  export let sortDir: 'asc'|'desc' = 'desc';
+
   const dispatch = createEventDispatcher<{
-    update: { key: 'status'|'kategori'|'cert'|'dateFrom'|'dateTo', value: any },
+    update: { key: 'status'|'kategori'|'cert'|'dateFrom'|'dateTo'|'sortBy'|'sortDir', value: any },
     clear: void,
     apply: void,
     close: void
   }>();
 
-  function update(key: 'status'|'kategori'|'cert'|'dateFrom'|'dateTo', value: any) {
+  function update(key: 'status'|'kategori'|'cert'|'dateFrom'|'dateTo'|'sortBy'|'sortDir', value: any) {
     dispatch('update', { key, value });
+  }
+
+  function setCreatedSort(dir: 'asc'|'desc') {
+    update('sortBy', 'created');
+    update('sortDir', dir);
+  }
+  function setStartDateSort(dir: 'asc'|'desc') {
+    update('sortBy', 'start_date');
+    update('sortDir', dir);
   }
 </script>
 
@@ -45,6 +58,18 @@
       </div>
 
       <div class="space-y-4 max-h-[65vh] overflow-y-auto">
+        <!-- Sortir (Create) -->
+        <FilterSection title="Sortir" on:clear={() => setCreatedSort('desc')} showClear={!(sortBy==='created' && sortDir==='desc')}>
+          <select
+            aria-label="Sortir Create"
+            class="w-full px-3 py-2 rounded-xl text-sm border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70"
+            on:change={(e) => setCreatedSort(((e.target as HTMLSelectElement).value as 'asc'|'desc'))}
+          >
+            <option value="desc" selected={sortBy==='created' && sortDir==='desc'}>Create: Terbaru</option>
+            <option value="asc"  selected={sortBy==='created' && sortDir==='asc'}>Create: Terlama</option>
+          </select>
+        </FilterSection>
+
         <FilterSection title="Status" showClear={!!statusValue} on:clear={() => update('status','')}>
           <div class="mt-2 flex flex-wrap gap-2">
             {#each statusOptions as s}
@@ -91,12 +116,36 @@
           </div>
         </FilterSection>
 
-        <FilterSection title="Tanggal" showClear={!!(dateFrom || dateTo)} on:clear={() => { update('dateFrom',''); update('dateTo',''); }}>
-          <div class="mt-2 grid grid-cols-2 gap-2">
-            <input type="date" value={dateFrom} on:change={(e)=>update('dateFrom',(e.target as HTMLInputElement).value)}
-                   class="px-3 py-2 rounded-xl text-sm border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70" />
-            <input type="date" value={dateTo} on:change={(e)=>update('dateTo',(e.target as HTMLInputElement).value)}
-                   class="px-3 py-2 rounded-xl text-sm border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70" />
+        <FilterSection title="Tanggal" showClear={!!(dateFrom || dateTo) || sortBy==='start_date'} on:clear={() => { update('dateFrom',''); update('dateTo',''); setCreatedSort('desc'); }}>
+          <div class="space-y-3">
+            <!-- segmented sort -->
+            <div>
+              <span class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">Urutkan Tanggal Dilaksanakan</span>
+              <div class="inline-flex w-full rounded-xl overflow-hidden border border-black/5 dark:border-white/10" role="tablist" aria-label="Urutan tanggal dilaksanakan">
+                <button
+                  type="button"
+                  on:click={() => setStartDateSort('desc')}
+                  class="w-full px-3 py-1.5 text-sm font-semibold transition-colors
+                         {sortBy==='start_date' && sortDir==='desc' ? 'bg-violet-600 text-white' : 'bg-white/70 dark:bg-[#12101d]/70 text-slate-900 dark:text-slate-100'}"
+                  aria-selected={sortBy==='start_date' && sortDir==='desc'}
+                  role="tab">Terbaru dulu</button>
+                <button
+                  type="button"
+                  on:click={() => setStartDateSort('asc')}
+                  class="w-full px-3 py-1.5 text-sm font-semibold transition-colors border-l border-black/5 dark:border-white/10
+                         {sortBy==='start_date' && sortDir==='asc' ? 'bg-violet-600 text-white' : 'bg-white/70 dark:bg-[#12101d]/70 text-slate-900 dark:text-slate-100'}"
+                  aria-selected={sortBy==='start_date' && sortDir==='asc'}
+                  role="tab">Terlama dulu</button>
+              </div>
+              <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">Gunakan bagian <b>Sortir</b> di atas untuk kembali ke urutan <b>Create</b>.</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+              <input type="date" value={dateFrom} on:change={(e)=>update('dateFrom',(e.target as HTMLInputElement).value)}
+                     class="px-3 py-2 rounded-xl text-sm border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70" />
+              <input type="date" value={dateTo} on:change={(e)=>update('dateTo',(e.target as HTMLInputElement).value)}
+                     class="px-3 py-2 rounded-xl text-sm border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70" />
+            </div>
           </div>
         </FilterSection>
       </div>
