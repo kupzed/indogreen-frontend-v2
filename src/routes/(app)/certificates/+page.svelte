@@ -45,6 +45,9 @@
   let statusFilter: '' | Certificate['status'] = '';
   let dateFromFilter = '';
   let dateToFilter = '';
+  let sortBy: 'created' | 'date_of_issue' | 'date_of_expired' = 'created';
+  let sortDir: 'desc' | 'asc' = 'desc';
+  let dateSortField: 'date_of_issue' | 'date_of_expired' = 'date_of_issue';
 
   // ===== UI State =====
   let activeView: 'table' | 'list' = 'table';
@@ -126,8 +129,18 @@
               ? `${new Date(dateFromFilter).toLocaleDateString('id-ID')} - ${new Date(dateToFilter).toLocaleDateString('id-ID')}`
               : (dateFromFilter ? `Dari ${new Date(dateFromFilter).toLocaleDateString('id-ID')}` : `Sampai ${new Date(dateToFilter).toLocaleDateString('id-ID')}`)
         }
-      : null
-  ].filter(Boolean) as Array<{ key: 'status'|'date'; label: string }>;
+      : null,
+    (sortBy !== 'created' || (sortBy === 'created' && sortDir === 'asc'))
+      ? {
+          key: 'sort' as const,
+          label:
+            (sortBy === 'created')
+              ? `Urut: Create ${sortDir === 'desc' ? 'Terbaru' : 'Terlama'}`
+              : `Urut: ${sortBy === 'date_of_issue' ? 'Tanggal Terbit' : 'Tanggal Expired'} ${sortDir === 'desc' ? 'Terbaru dulu' : 'Terlama dulu'}`
+        }
+      : null,
+    search && { key:'search', label:`Cari: ${search}` },
+  ].filter(Boolean) as Array<{key:'status'|'date'|'sort'|'search'; label:string}>;
 
   // ===== API =====
   async function fetchDependencies() {
@@ -161,7 +174,9 @@
         date_from: dateFromFilter,
         date_to: dateToFilter,
         page: currentPage,
-        per_page: perPage
+        per_page: perPage,
+        sort_by: sortBy,
+        sort_dir: sortDir
       })}`;
       const res: any = await apiFetch(url, { auth: true });
       items       = res?.data ?? res?.items ?? res ?? [];
@@ -188,12 +203,19 @@
     statusFilter = '';
     dateFromFilter = '';
     dateToFilter = '';
+    sortBy = 'created';
+    sortDir = 'desc';
+    dateSortField = 'date_of_issue';
+    search = '';
     currentPage = 1;
     fetchList();
   }
-  function clearOneFilter(key: 'status'|'date') {
+
+  function clearOneFilter(key: 'status'|'date'|'sort'|'search') {
     if (key === 'status') statusFilter = '';
     if (key === 'date') { dateFromFilter = ''; dateToFilter = ''; }
+    if (key === 'sort') { sortBy = 'created'; sortDir = 'desc'; dateSortField = 'date_of_issue'; }
+    if (key === 'search') search = '';
     handleFilterOrSearch();
   }
   function toggleFilter() {
@@ -366,11 +388,24 @@
           statusValue={statusFilter}
           dateFrom={dateFromFilter}
           dateTo={dateToFilter}
+          sortBy={sortBy}
+          sortDir={sortDir}
+          dateSortField={dateSortField}
           on:update={(e) => {
-            const { key, value } = e.detail as { key:'status'|'dateFrom'|'dateTo', value:any };
-            if (key==='status') statusFilter = value as Certificate['status'] | '';
+            const { key, value } = e.detail as {
+              key:'status'|'dateFrom'|'dateTo'|'sortBy'|'sortDir'|'dateSortField',
+              value:any
+            };
+            if (key==='status') statusFilter = value as typeof statusFilter;
             if (key==='dateFrom') dateFromFilter = value as string;
             if (key==='dateTo') dateToFilter = value as string;
+            if (key==='sortBy') sortBy = value as typeof sortBy;
+            if (key==='sortDir') sortDir = value as typeof sortDir;
+            if (key==='dateSortField') {
+              dateSortField = value as typeof dateSortField;
+              // jika sedang sorting by date, pindahkan field saat user ganti pilihan
+              if (sortBy !== 'created') sortBy = dateSortField;
+            }
             handleFilterOrSearch();
           }}
           on:clear={() => clearFilters()}
@@ -694,11 +729,23 @@
     statusValue={statusFilter}
     dateFrom={dateFromFilter}
     dateTo={dateToFilter}
+    sortBy={sortBy}
+    sortDir={sortDir}
+    dateSortField={dateSortField}
     on:update={(e) => {
-      const { key, value } = e.detail as { key:'status'|'dateFrom'|'dateTo', value:any };
-      if (key==='status') statusFilter = value as Certificate['status'] | '';
+      const { key, value } = e.detail as {
+        key:'status'|'dateFrom'|'dateTo'|'sortBy'|'sortDir'|'dateSortField',
+        value:any
+      };
+      if (key==='status') statusFilter = value as typeof statusFilter;
       if (key==='dateFrom') dateFromFilter = value as string;
       if (key==='dateTo') dateToFilter = value as string;
+      if (key==='sortBy') sortBy = value as typeof sortBy;
+      if (key==='sortDir') sortDir = value as typeof sortDir;
+      if (key==='dateSortField') {
+        dateSortField = value as typeof dateSortField;
+        if (sortBy !== 'created') sortBy = dateSortField;
+      }
     }}
     on:clear={() => clearFilters()}
     on:apply={() => { showMobileFilter = false; handleFilterOrSearch(); }}
