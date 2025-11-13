@@ -12,10 +12,10 @@
   const links: Link[] = [
     { name: 'Dashboard',           href: '/dashboard' },
     { name: 'Project',             href: '/projects' },
-    { name: 'Activity',            href: '/activities' },
+    // { name: 'Activity',            href: '/activities' },
     { name: 'Mitra',               href: '/mitras' },
-    { name: 'Barang Sertifikat',   href: '/barang-certificates' },
-    { name: 'Sertifikat',          href: '/certificates' }
+    // { name: 'Barang Sertifikat',   href: '/barang-certificates' },
+    // { name: 'Sertifikat',          href: '/certificates' }
   ];
 
   let navEl: HTMLElement;

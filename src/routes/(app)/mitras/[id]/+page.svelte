@@ -570,10 +570,16 @@
                       <ul class="divide-y divide-slate-200/70 dark:divide-white/10">
                         {#each bcItems as item (item.id)}
                           <li>
-                            <a
+                            <a 
                               href={`/barang-certificates/${item.id}`}
                               class="block hover:bg-violet-600/5 dark:hover:bg-white/5 px-4 py-4 sm:px-6"
                               on:click|preventDefault={() => bcOpenDetailDrawer(item)}
+                              on:keydown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  bcOpenDetailDrawer(item);
+                                }
+                              }}
                               role="button"
                               aria-label={`Lihat detail barang certificate ${item.name}`}
                             >
@@ -623,11 +629,21 @@
                             {#each bcItems as item (item.id)}
                               <tr>
                                 <td class="whitespace-nowrap px-3 py-4 text-sm font-medium text-slate-900 dark:text-slate-100">
-                                  <a
+                                  <a 
                                     href={`/barang-certificates/${item.id}`}
                                     class="text-violet-700 dark:text-violet-300 hover:underline"
                                     on:click|preventDefault={() => bcOpenDetailDrawer(item)}
-                                  >{item.name}</a>
+                                    on:keydown={(e) => {
+                                      if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        bcOpenDetailDrawer(item);
+                                      }
+                                    }}
+                                    role="button"
+                                    aria-label={`Lihat detail barang certificate ${item.name}`}
+                                  >
+                                    {item.name}
+                                  </a>
                                 </td>
                                 <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-600 dark:text-slate-300">{item.no_seri}</td>
                                 <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-600 dark:text-slate-300">{mitra.nama}</td>

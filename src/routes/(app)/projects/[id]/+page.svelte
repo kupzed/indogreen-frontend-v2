@@ -1159,7 +1159,19 @@
                       <ul class="divide-y divide-slate-200/70 dark:divide-white/10">
                         {#each activities as activity (activity.id)}
                           <li>
-                            <a href={`/activities/${activity.id}`} class="block hover:bg-violet-600/5 dark:hover:bg-white/5 px-4 py-4 sm:px-6">
+                            <a
+                              href={`/activities/${activity.id}`}
+                              class="block hover:bg-violet-600/5 dark:hover:bg-white/5 px-4 py-4 sm:px-6"
+                              on:click|preventDefault={() => openActivityDetailDrawer(activity)}
+                              on:keydown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  openActivityDetailDrawer(activity);
+                                }
+                              }}
+                              role="button"
+                              aria-label={`Lihat detail aktivitas ${activity.name}`}
+                            >
                               <div class="flex items-center justify-between">
                                 <p class="text-sm font-medium text-violet-700 dark:text-violet-300 truncate">{activity.name}</p>
                                 <span class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold bg-slate-500/15 text-slate-700 dark:text-slate-300">{activity.kategori}</span>
@@ -1223,7 +1235,21 @@
                                   {new Date(activity.activity_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
                                 </td>
                                 <td class="whitespace-nowrap px-3 py-4 text-sm font-medium">
-                                  <a href={`/activities/${activity.id}`} class="text-violet-700 dark:text-violet-300 hover:underline">{activity.name}</a><br>
+                                  <a 
+                                    href={`/activities/${activity.id}`}
+                                    class="text-violet-700 dark:text-violet-300 hover:underline"
+                                    on:click|preventDefault={() => openActivityDetailDrawer(activity)}
+                                    on:keydown={(e) => {
+                                      if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        openActivityDetailDrawer(activity);
+                                      }
+                                    }}
+                                    role="button"
+                                    aria-label={`Lihat detail aktivitas ${activity.name}`}
+                                  >
+                                    {activity.name}
+                                  </a><br>
                                   <span class="text-xs text-slate-500 dark:text-slate-400">{activity.short_desc}</span>
                                 </td>
                                 <td class="whitespace-nowrap px-3 py-4 text-sm">
@@ -1529,7 +1555,19 @@
                       <ul class="divide-y divide-slate-200/70 dark:divide-white/10">
                         {#each certificates as item (item.id)}
                           <li>
-                            <a href={`/certificates/${item.id}`} class="block hover:bg-violet-600/5 dark:hover:bg-white/5 px-4 py-4 sm:px-6">
+                            <a
+                              href={`/certificates/${item.id}`}
+                              class="block hover:bg-violet-600/5 dark:hover:bg-white/5 px-4 py-4 sm:px-6"
+                              on:click|preventDefault={() => openCertificateDetailDrawer(item)}
+                              on:keydown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  openCertificateDetailDrawer(item);
+                                }
+                              }}
+                              role="button"
+                              aria-label={`Lihat detail sertifikat ${item.name}`}
+                            >
                               <div class="flex items-center justify-between">
                                 <p class="text-sm font-medium text-violet-700 dark:text-violet-300 truncate">{item.name}</p>
                                 <span class={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${getCertificateStatusBadgeClasses(item.status)}`}>{item.status}</span>
@@ -1583,7 +1621,21 @@
                             {#each certificates as item (item.id)}
                               <tr>
                                 <td class="whitespace-nowrap px-3 py-4 text-sm font-medium">
-                                  <a href={`/certificates/${item.id}`} class="text-violet-700 dark:text-violet-300 hover:underline">{item.name}</a>
+                                  <a 
+                                    href={`/certificates/${item.id}`}
+                                    class="text-violet-700 dark:text-violet-300 hover:underline"
+                                    on:click|preventDefault={() => openCertificateDetailDrawer(item)}
+                                    on:keydown={(e) => {
+                                      if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        openCertificateDetailDrawer(item);
+                                      }
+                                    }}
+                                    role="button"
+                                    aria-label={`Lihat detail sertifikat ${item.name}`}
+                                  >
+                                    {item.name}
+                                  </a>
                                 </td>
                                 <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-600 dark:text-slate-300">{item.no_certificate}</td>
                                 <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-600 dark:text-slate-300">{item.barang_certificate?.name || '-'}</td>
