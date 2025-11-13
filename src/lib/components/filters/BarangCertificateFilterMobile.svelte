@@ -1,5 +1,4 @@
 <script lang="ts" context="module">
-  // DIEKSPOR supaya props komponen dapat type yang valid di consumer
   export type MitraOption = { id: number; nama: string };
 </script>
 
@@ -11,9 +10,10 @@
   export let open = false;
   export let mitras: MitraOption[] = [];
   export let mitraValue: number | '' = '';
+  export let sortDir: 'desc'|'asc' = 'desc';
 
   const dispatch = createEventDispatcher<{
-    update: { key: 'mitra', value: number | '' },
+    update: { key: 'mitra'|'sortDir', value: any },
     clear: void,
     apply: void,
     close: void
@@ -29,17 +29,35 @@
   <div class="fixed inset-0 z-50" role="dialog" aria-modal="true">
     <button transition:fade={{ duration: 250 }} class="absolute inset-0 bg-black/50" on:click={() => dispatch('close')} aria-label="Tutup"></button>
 
-    <div
-      in:fly={{ y: 300, duration: 300, opacity: 0 }}
-      out:fly={{ y: 300, duration: 250, opacity: 0 }}
-      class="absolute bottom-0 left-0 right-0 rounded-t-2xl border border-black/5 dark:border-white/10 bg-white/90 dark:bg-[#0e0c19]/90 backdrop-blur p-4 max-h-[85vh] overflow-y-auto overscroll-contain"
-    >
+    <div in:fly={{ y: 300, duration: 300, opacity: 0 }} out:fly={{ y: 300, duration: 250, opacity: 0 }}
+         class="absolute bottom-0 left-0 right-0 rounded-t-2xl border border-black/5 dark:border-white/10 bg-white/90 dark:bg-[#0e0c19]/90 backdrop-blur p-4 max-h-[85vh] overflow-y-auto overscroll-contain">
+
       <div class="flex items-center justify-between mb-2">
         <h3 class="font-semibold">Filters</h3>
         <button class="h-9 w-9 grid place-items-center rounded-xl border border-black/5 dark:border-white/10" on:click={() => dispatch('close')} aria-label="Tutup">✕</button>
       </div>
 
-      <div class="space-y-4 max-h-[65vh] overflow-y-auto [@supports(-webkit-overflow-scrolling:touch)]:[-webkit-overflow-scrolling:touch]">
+      <div class="space-y-4 max-h=[65vh] overflow-y-auto [@supports(-webkit-overflow-scrolling:touch)]:[-webkit-overflow-scrolling:touch]">
+        <!-- ⬇️ NEW: SORTIR -->
+        <FilterSection title="Sortir">
+          <div class="inline-flex w-full rounded-md overflow-hidden border border-black/5 dark:border-white/10">
+            <button
+              type="button"
+              on:click={() => dispatch('update', { key:'sortDir', value:'desc' })}
+              class="w-full px-3 py-1.5 text-sm font-semibold
+                     {sortDir==='desc' ? 'bg-indigo-600 text-white' : 'bg-white/70 text-slate-900 dark:bg-[#12101d]/70 dark:text-slate-100'}">
+              Terbaru
+            </button>
+            <button
+              type="button"
+              on:click={() => dispatch('update', { key:'sortDir', value:'asc' })}
+              class="w-full px-3 py-1.5 text-sm font-semibold border-l border-black/5 dark:border-white/10
+                     {sortDir==='asc' ? 'bg-indigo-600 text-white' : 'bg-white/70 text-slate-900 dark:bg-[#12101d]/70 dark:text-slate-100'}">
+              Terlama
+            </button>
+          </div>
+        </FilterSection>
+
         <FilterSection title="Mitra" startOpen={true} showClear={mitraValue !== ''} on:clear={() => dispatch('update', { key:'mitra', value:'' })}>
           <div class="mt-2">
             <select
