@@ -2,17 +2,16 @@
   import FilterSection from './FilterSection.svelte';
   import { createEventDispatcher } from 'svelte';
 
-  export let kategoriOptions: string[] = []; // ['pribadi','perusahaan','customer','vendor']
+  export let kategoriOptions: string[] = [];
   export let kategoriValue = '';
-  export let dateFrom = '';
-  export let dateTo = '';
+  export let sortDir: 'desc'|'asc' = 'desc'; // ⬅️ NEW
 
   const dispatch = createEventDispatcher<{
-    update: { key: 'kategori'|'dateFrom'|'dateTo', value: any };
+    update: { key: 'kategori'|'sortDir', value: any }; // ⬅️ add sortDir
     clear: void;
   }>();
 
-  function update(key: 'kategori'|'dateFrom'|'dateTo', value: any) {
+  function update(key: 'kategori'|'sortDir', value: any) {
     dispatch('update', { key, value });
   }
 
@@ -20,29 +19,39 @@
 </script>
 
 <div class="border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur p-4 space-y-4">
+
+  <!-- ⬇️ NEW: SORTIR -->
+  <FilterSection title="Sortir" startOpen>
+    <div class="inline-flex w-full rounded-md overflow-hidden border border-black/5 dark:border-white/10">
+      <button
+        type="button"
+        on:click={() => update('sortDir','desc')}
+        class="w-full px-3 py-1.5 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500
+               {sortDir==='desc' ? 'bg-indigo-600 text-white' : 'bg-white/70 text-slate-900 dark:bg-[#12101d]/70 dark:text-slate-100'}">
+        Terbaru
+      </button>
+      <button
+        type="button"
+        on:click={() => update('sortDir','asc')}
+        class="w-full px-3 py-1.5 text-sm font-semibold transition-colors border-l border-black/5 dark:border-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500
+               {sortDir==='asc' ? 'bg-indigo-600 text-white' : 'bg-white/70 text-slate-900 dark:bg-[#12101d]/70 dark:text-slate-100'}">
+        Terlama
+      </button>
+    </div>
+  </FilterSection>
+
   <FilterSection title="Kategori" startOpen>
     <div class="mt-1 flex flex-wrap gap-2">
       {#each kategoriOptions as k}
         <button
           type="button"
-          on:click={() => dispatch('update', { key:'kategori', value: (kategoriValue===k?'':k) })}
+          on:click={() => update('kategori', kategoriValue===k ? '' : k)}
           class="px-3 py-1.5 rounded-full text-xs border border-black/5 dark:border-white/10
                  hover:bg-black/5 dark:hover:bg-white/5
                  {kategoriValue===k ? 'bg-violet-500/15 text-violet-700 dark:text-violet-300' : 'text-slate-700 dark:text-slate-200'}">
           {cap(k)}
         </button>
       {/each}
-    </div>
-  </FilterSection>
-
-  <FilterSection title="Tanggal" showClear={!!(dateFrom || dateTo)} on:clear={() => { update('dateFrom',''); update('dateTo',''); }}>
-    <div class="space-y-2">
-      <div class="block text-xs text-slate-600 dark:text-slate-300">Dari</div>
-      <input type="date" value={dateFrom} on:change={(e)=>update('dateFrom',(e.target as HTMLInputElement).value)}
-             class="w-full px-3 py-2 rounded-xl text-sm border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70" />
-      <div class="block text-xs text-slate-600 dark:text-slate-300 mt-2">Sampai</div>
-      <input type="date" value={dateTo} on:change={(e)=>update('dateTo',(e.target as HTMLInputElement).value)}
-             class="w-full px-3 py-2 rounded-xl text-sm border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70" />
     </div>
   </FilterSection>
 

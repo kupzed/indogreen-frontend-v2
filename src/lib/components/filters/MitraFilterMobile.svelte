@@ -7,17 +7,16 @@
 
   export let kategoriOptions: string[] = [];
   export let kategoriValue = '';
-  export let dateFrom = '';
-  export let dateTo = '';
+  export let sortDir: 'desc'|'asc' = 'desc'; // ⬅️ NEW
 
   const dispatch = createEventDispatcher<{
-    update: { key: 'status'|'kategori'|'cert'|'dateFrom'|'dateTo', value: any },
+    update: { key: 'kategori'|'sortDir', value: any }, // ⬅️ add sortDir
     clear: void,
     apply: void,
     close: void
   }>();
 
-  function update(key: 'status'|'kategori'|'cert'|'dateFrom'|'dateTo', value: any) {
+  function update(key: 'kategori'|'sortDir', value: any) {
     dispatch('update', { key, value });
   }
 
@@ -26,24 +25,37 @@
 
 {#if open}
   <div class="fixed inset-0 z-50" role="dialog" aria-modal="true">
-    <button
-      transition:fade={{ duration: 250 }}
-      class="absolute inset-0 bg-black/50"
-      on:click={() => dispatch('close')}
-      aria-label="Tutup"
-    ></button>
+    <button transition:fade={{ duration: 250 }} class="absolute inset-0 bg-black/50" on:click={() => dispatch('close')} aria-label="Tutup"></button>
 
-    <div
-      in:fly={{ y: 300, duration: 300, opacity: 0 }}
-      out:fly={{ y: 300, duration: 250, opacity: 0 }}
-      class="absolute bottom-0 left-0 right-0 rounded-t-2xl border border-black/5 dark:border-white/10 bg-white/90 dark:bg-[#0e0c19]/90 backdrop-blur p-4 max-h-[85vh] overflow-y-auto overscroll-contain"
-    >
+    <div in:fly={{ y: 300, duration: 300, opacity: 0 }} out:fly={{ y: 300, duration: 250, opacity: 0 }}
+         class="absolute bottom-0 left-0 right-0 rounded-t-2xl border border-black/5 dark:border-white/10 bg-white/90 dark:bg-[#0e0c19]/90 backdrop-blur p-4 max-h-[85vh] overflow-y-auto overscroll-contain">
+
       <div class="flex items-center justify-between mb-2">
         <h3 class="font-semibold">Filters</h3>
         <button class="h-9 w-9 grid place-items-center rounded-xl border border-black/5 dark:border-white/10" on:click={() => dispatch('close')} aria-label="Tutup">✕</button>
       </div>
 
       <div class="space-y-4 max-h-[65vh] overflow-y-auto">
+        <!-- ⬇️ NEW: SORTIR -->
+        <FilterSection title="Sortir">
+          <div class="inline-flex w-full rounded-md overflow-hidden border border-black/5 dark:border-white/10">
+            <button
+              type="button"
+              on:click={() => update('sortDir','desc')}
+              class="w-full px-3 py-1.5 text-sm font-semibold transition-colors
+                     {sortDir==='desc' ? 'bg-indigo-600 text-white' : 'bg-white/70 text-slate-900 dark:bg-[#12101d]/70 dark:text-slate-100'}">
+              Create: Terbaru
+            </button>
+            <button
+              type="button"
+              on:click={() => update('sortDir','asc')}
+              class="w-full px-3 py-1.5 text-sm font-semibold transition-colors border-l border-black/5 dark:border-white/10
+                     {sortDir==='asc' ? 'bg-indigo-600 text-white' : 'bg-white/70 text-slate-900 dark:bg-[#12101d]/70 dark:text-slate-100'}">
+              Create: Terlama
+            </button>
+          </div>
+        </FilterSection>
+
         <FilterSection title="Kategori" showClear={!!kategoriValue} on:clear={() => update('kategori','')}>
           <div class="mt-2 flex flex-wrap gap-2">
             {#each kategoriOptions as k}
@@ -55,15 +67,6 @@
                 {cap(k)}
               </button>
             {/each}
-          </div>
-        </FilterSection>
-
-        <FilterSection title="Tanggal" showClear={!!(dateFrom || dateTo)} on:clear={() => { update('dateFrom',''); update('dateTo',''); }}>
-          <div class="mt-2 grid grid-cols-2 gap-2">
-            <input type="date" value={dateFrom} on:change={(e)=>update('dateFrom',(e.target as HTMLInputElement).value)}
-                   class="px-3 py-2 rounded-xl text-sm border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70" />
-            <input type="date" value={dateTo} on:change={(e)=>update('dateTo',(e.target as HTMLInputElement).value)}
-                   class="px-3 py-2 rounded-xl text-sm border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70" />
           </div>
         </FilterSection>
       </div>
