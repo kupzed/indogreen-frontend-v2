@@ -62,18 +62,19 @@ function isUnauthorized(status: number, payload: unknown): boolean {
 }
 
 async function redirectToLogin() {
+	if (typeof window === 'undefined') return;
+
+	const current = window.location.pathname + window.location.search + window.location.hash;
+
+	const loginUrl = `/auth/login?redirect=${encodeURIComponent(current)}`;
+
 	try {
-		if (typeof window !== 'undefined') {
-			// dynamic import supaya aman di lingkungan non-browser
-			const nav = await import('$app/navigation');
-			nav.goto('/auth/login');
-			return;
-		}
+		const nav = await import('$app/navigation');
+		nav.goto(loginUrl, { replaceState: true });
+		return;
 	} catch {
-		/* noop */
+		window.location.href = loginUrl;
 	}
-	// fallback
-	if (typeof window !== 'undefined') window.location.href = '/auth/login';
 }
 
 /**

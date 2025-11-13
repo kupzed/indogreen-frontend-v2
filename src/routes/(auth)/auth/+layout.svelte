@@ -2,14 +2,27 @@
   import '../../../app.css';
   import { goto } from '$app/navigation';
   import { getToken } from '$lib/api';
+  import { onMount } from 'svelte';
 
   let { children } = $props();
 
-  // If already logged in, redirect to dashboard
-  if (typeof window !== 'undefined') {
+  onMount(() => {
+    if (typeof window === 'undefined') return;
+
     const token = getToken();
-    if (token) goto('/dashboard');
-  }
+    if (!token) return;
+
+    const redirectParam = new URL(window.location.href).searchParams.get('redirect');
+
+    const target =
+      redirectParam &&
+      redirectParam.startsWith('/') &&
+      !redirectParam.startsWith('/auth')
+        ? redirectParam
+        : '/dashboard';
+
+    goto(target, { replaceState: true });
+  });
 </script>
 
 <div class="min-h-[100svh] grid place-items-center bg-gradient-to-br from-violet-50 to-slate-50 dark:from-[#0b0617] dark:to-[#0b0617] px-4 py-8">

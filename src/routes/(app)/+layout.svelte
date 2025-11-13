@@ -12,9 +12,19 @@
   onMount(() => {
     const unsub = theme.subscribe(() => {});
 
-    const isDashboard = window.location.pathname.startsWith('/dashboard');
-    const token = getToken();
-    if (isDashboard && !token) goto('/auth/login');
+    if (typeof window !== 'undefined') {
+      const token = getToken();
+      if (!token) {
+        const current =
+          window.location.pathname +
+          window.location.search +
+          window.location.hash;
+
+        goto(`/auth/login?redirect=${encodeURIComponent(current)}`, {
+          replaceState: true
+        });
+      }
+    }
 
     return unsub;
   });
@@ -24,11 +34,9 @@
   <link rel="icon" href={favicon} />
 </svelte:head>
 
-<!-- App shell background -->
 <div class="min-h-screen bg-gradient-to-b from-violet-50 to-violet-50 dark:from-[#0b0317] dark:to-[#0b0317]">
   <AppNavbar />
 
-  <!-- Page container -->
   <main class="px-4 sm:px-6 lg:px-8 py-6">
     {@render children?.()}
   </main>
