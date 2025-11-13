@@ -423,73 +423,107 @@
     <!-- KONTEN -->
     <div class="flex-1 min-h-0 overflow-y-auto overscroll-contain">
       {#if loading}
-        <div class="px-4 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur shadow-sm" role="status" aria-busy="true">
-          <div class="relative overflow-x-auto no-scrollbar">
-            <table class="min-w-full divide-y divide-slate-200/70 dark:divide-white/10">
-              <thead class="bg-transparent">
-                <tr>
-                  <th class="px-3 py-3.5 text-left"><div class="h-4 w-28 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div></th>
-                  <th class="px-3 py-3.5 text-left"><div class="h-4 w-24 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div></th>
-                  <th class="px-3 py-3.5 text-left"><div class="h-4 w-20 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div></th>
-                  <th class="px-3 py-3.5 text-left"><div class="h-4 w-16 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div></th>
-                  <th class="px-3 py-3.5 text-left"><div class="h-4 w-16 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div></th>
-                  <th class="px-3 py-3.5 text-left"><div class="h-4 w-18 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div></th>
-                  <th class="px-3 py-3.5 text-left"><div class="h-4 w-12 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div></th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-slate-200/70 dark:divide-white/10">
-                {#each Array(perPage || 10) as _}
-                  <tr class="animate-pulse">
-                    <!-- Nama Aktivitas + deskripsi -->
-                    <td class="whitespace-nowrap px-3 py-4">
-                      <div class="h-4 w-56 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
-                      <div class="mt-2 h-3 w-40 rounded-md bg-slate-200/60 dark:bg-white/5"></div>
-                    </td>
-                    <!-- Project -->
-                    <td class="whitespace-nowrap px-3 py-4">
-                      <div class="h-4 w-44 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
-                    </td>
-                    <!-- Kategori (badge) -->
-                    <td class="whitespace-nowrap px-3 py-4">
-                      <span class="h-5 w-20 rounded-full bg-slate-200/70 dark:bg-white/5 block"></span>
-                    </td>
-                    <!-- Jenis -->
-                    <td class="whitespace-nowrap px-3 py-4">
-                      <div class="h-4 w-24 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
-                    </td>
-                    <!-- Mitra -->
-                    <td class="whitespace-nowrap px-3 py-4">
-                      <div class="h-4 w-36 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
-                    </td>
-                    <!-- Tanggal -->
-                    <td class="whitespace-nowrap px-3 py-4">
-                      <div class="h-4 w-28 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
-                    </td>
-                    <!-- Aksi -->
-                    <td class="whitespace-nowrap px-3 py-4">
-                      <div class="flex items-center gap-3">
-                        <div class="h-5 w-5 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
-                        <div class="h-5 w-5 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
-                        <div class="h-5 w-5 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
-                      </div>
-                    </td>
+        {#if activeView === 'table'}
+          <div class="px-4 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur shadow-sm" role="status" aria-busy="true">
+            <div class="relative overflow-x-auto no-scrollbar">
+              <table class="min-w-full divide-y divide-slate-200/70 dark:divide-white/10">
+                <thead class="bg-transparent">
+                  <tr>
+                    <th class="px-3 py-3.5 text-left"><div class="h-4 w-28 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div></th>
+                    <th class="px-3 py-3.5 text-left"><div class="h-4 w-24 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div></th>
+                    <th class="px-3 py-3.5 text-left"><div class="h-4 w-20 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div></th>
+                    <th class="px-3 py-3.5 text-left"><div class="h-4 w-16 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div></th>
+                    <th class="px-3 py-3.5 text-left"><div class="h-4 w-16 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div></th>
+                    <th class="px-3 py-3.5 text-left"><div class="h-4 w-18 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div></th>
+                    <th class="px-3 py-3.5 text-left"><div class="h-4 w-12 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div></th>
                   </tr>
-                {/each}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody class="divide-y divide-slate-200/70 dark:divide-white/10">
+                  {#each Array(perPage || 10) as _}
+                    <tr class="animate-pulse">
+                      <!-- Nama Aktivitas + deskripsi -->
+                      <td class="whitespace-nowrap px-3 py-4">
+                        <div class="h-4 w-56 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
+                        <div class="mt-2 h-3 w-40 rounded-md bg-slate-200/60 dark:bg-white/5"></div>
+                      </td>
+                      <!-- Project -->
+                      <td class="whitespace-nowrap px-3 py-4">
+                        <div class="h-4 w-44 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
+                      </td>
+                      <!-- Kategori (badge) -->
+                      <td class="whitespace-nowrap px-3 py-4">
+                        <span class="h-5 w-20 rounded-full bg-slate-200/70 dark:bg-white/5 block"></span>
+                      </td>
+                      <!-- Jenis -->
+                      <td class="whitespace-nowrap px-3 py-4">
+                        <div class="h-4 w-24 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
+                      </td>
+                      <!-- Mitra -->
+                      <td class="whitespace-nowrap px-3 py-4">
+                        <div class="h-4 w-36 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
+                      </td>
+                      <!-- Tanggal -->
+                      <td class="whitespace-nowrap px-3 py-4">
+                        <div class="h-4 w-28 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
+                      </td>
+                      <!-- Aksi -->
+                      <td class="whitespace-nowrap px-3 py-4">
+                        <div class="flex items-center gap-3">
+                          <div class="h-5 w-5 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
+                          <div class="h-5 w-5 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
+                          <div class="h-5 w-5 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
+                        </div>
+                      </td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
 
-          <div class="border-t border-slate-200/70 dark:border-white/10 px-3 py-3.5">
-            <div class="flex items-center justify-between">
-              <div class="h-4 w-48 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div>
-              <div class="flex items-center gap-2">
-                <div class="h-9 w-24 rounded-xl bg-slate-200/70 dark:bg-white/5 animate-pulse"></div>
-                <div class="h-9 w-9 rounded-xl bg-slate-200/70 dark:bg-white/5 animate-pulse"></div>
-                <div class="h-9 w-9 rounded-xl bg-slate-200/70 dark:bg-white/5 animate-pulse"></div>
+            <div class="border-t border-slate-200/70 dark:border-white/10 px-3 py-3.5">
+              <div class="flex items-center justify-between">
+                <div class="h-4 w-48 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div>
+                <div class="flex items-center gap-2">
+                  <div class="h-9 w-24 rounded-xl bg-slate-200/70 dark:bg-white/5 animate-pulse"></div>
+                  <div class="h-9 w-9 rounded-xl bg-slate-200/70 dark:bg-white/5 animate-pulse"></div>
+                  <div class="h-9 w-9 rounded-xl bg-slate-200/70 dark:bg-white/5 animate-pulse"></div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        {:else}
+          <div class="border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur shadow-sm" role="status" aria-busy="true">
+            <ul class="divide-y divide-slate-200/70 dark:divide-white/10">
+              {#each Array(perPage || 10) as _}
+                <li class="px-4 py-4 sm:px-6 animate-pulse">
+                  <div class="flex items-center justify-between">
+                    <div class="h-4 w-48 rounded-md bg-slate-200/70 dark:bg-white/5"></div>
+                    <span class="h-5 w-20 rounded-full bg-slate-200/70 dark:bg-white/5"></span>
+                  </div>
+                  <div class="mt-2 flex flex-wrap items-center justify-between gap-3">
+                    <div class="h-4 w-72 rounded-md bg-slate-200/60 dark:bg-white/5"></div>
+                    <div class="h-4 w-40 rounded-md bg-slate-200/60 dark:bg-white/5"></div>
+                  </div>
+                  <div class="mt-3 flex justify-end gap-2">
+                    <div class="h-7 w-16 rounded-lg bg-slate-200/70 dark:bg-white/5"></div>
+                    <div class="h-7 w-14 rounded-lg bg-slate-200/70 dark:bg-white/5"></div>
+                    <div class="h-7 w-14 rounded-lg bg-slate-200/70 dark:bg-white/5"></div>
+                  </div>
+                </li>
+              {/each}
+            </ul>
+            <div class="border-t border-slate-200/70 dark:border-white/10 px-3 py-3.5">
+              <div class="flex items-center justify-between">
+                <div class="h-4 w-48 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div>
+                <div class="flex items-center gap-2">
+                  <div class="h-9 w-24 rounded-xl bg-slate-200/70 dark:bg-white/5 animate-pulse"></div>
+                  <div class="h-9 w-9 rounded-xl bg-slate-200/70 dark:bg-white/5 animate-pulse"></div>
+                  <div class="h-9 w-9 rounded-xl bg-slate-200/70 dark:bg-white/5 animate-pulse"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        {/if}
       {:else if error}
         <p class="mt-4 text-rose-500">{error}</p>
       {:else if activities.length === 0}
