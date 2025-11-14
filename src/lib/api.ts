@@ -141,7 +141,8 @@ export async function apiFetch<T = unknown>(
 	}
 
 	if (!response.ok) {
-		if (isUnauthorized(response.status, payload)) {
+		// HANYA redirect kalau request ini memang pakai auth: true
+		if (auth && isUnauthorized(response.status, payload)) {
 			try {
 				setToken(null);
 			} catch (err: unknown) {
@@ -151,7 +152,14 @@ export async function apiFetch<T = unknown>(
 			// lempar error khusus supaya UI tidak menampilkan pesan "Unauthenticated"
 			throw new Error('AUTH_REDIRECT');
 		}
-		const message = extractMessage(payload) ?? `Request failed (${response.status})`;
+
+		// Untuk request tanpa auth (termasuk /auth/login), cukup lempar pesan error dari API
+		const message =
+			extractMessage(payload) ||
+			(typeof payload === 'string' && payload.trim().length > 0
+				? payload
+				: `Email atau password salah! [Request failed (${response.status})]`);
+
 		throw new Error(message);
 	}
 

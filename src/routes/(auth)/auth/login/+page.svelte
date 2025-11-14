@@ -42,6 +42,9 @@
         replaceState: true
       });
     } catch (err: any) {
+      if (err?.message === 'AUTH_REDIRECT') {
+        return;
+      }
       errorMessage = err?.message || 'Login gagal';
     } finally {
       loading = false;
