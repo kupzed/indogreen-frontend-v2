@@ -7,6 +7,7 @@
   import { fly, fade } from 'svelte/transition';
   import { currentUser, setUser } from '$lib/stores/user';
   import { get } from 'svelte/store';
+  import ConfirmDialog from '../ConfirmDialog.svelte';
 
   type Link = { name: string; href: string };
   const links: Link[] = [
@@ -28,6 +29,9 @@
   let showMore = false;
   let showProfile = false;
   let showMobile = false;
+
+  let showLogoutConfirm = false;
+  let pendingLogout = false;
 
   function isActive(href: string, current: string) {
     return current === href || current.startsWith(href + '/');
@@ -84,6 +88,24 @@
 
     visible = tmpVisible;
     overflow = tmpOverflow;
+  }
+
+  function openLogoutConfirm() {
+    showProfile = false;
+    showMobile = false;
+    showLogoutConfirm = true;
+  }
+
+  async function confirmLogout() {
+    try {
+      pendingLogout = true;
+      try { await apiFetch('/auth/logout', { method: 'POST', auth: true }); } catch {}
+    } finally {
+      pendingLogout = false;
+      setUser(null as any);
+      setToken(null);
+      goto('/auth/login');
+    }
   }
 
   // === kunci scroll saat mobile menu terbuka ===
@@ -156,11 +178,6 @@
     showMobile = false;
     showMore = false;
     goto(href);
-  }
-
-  function logout() {
-    setToken(null);
-    goto('/auth/login');
   }
 </script>
 
@@ -267,7 +284,7 @@
                 </button>
                 <button
                   type="button"
-                  on:click={logout}
+                  on:click={openLogoutConfirm}
                   class="w-full text-left px-3 py-2 rounded-xl text-sm text-red-600 dark:text-red-400 hover:bg-red-500/10">
                   Logout
                 </button>
@@ -355,7 +372,7 @@
           </button>
           <button
             type="button"
-            on:click={logout}
+            on:click={openLogoutConfirm}
             class="group relative w-full text-left pl-5 pr-3 py-3 rounded-full text-sm text-red-600 dark:text-red-400 hover:bg-red-500/10">
             <span class="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 h-6 w-1 rounded-full bg-red-500/70 opacity-0 transition-opacity group-hover:opacity-100"></span>
             Logout
@@ -365,6 +382,17 @@
     </div>
   {/if}
 </div>
+
+<ConfirmDialog
+  bind:open={showLogoutConfirm}
+  title="Konfirmasi Logout"
+  message="Anda akan keluar dari sesi ini. Pastikan semua perubahan sudah tersimpan."
+  confirmText="Ya, Logout"
+  cancelText="Batal"
+  pending={pendingLogout}
+  on:confirm={confirmLogout}
+  on:cancel={() => (showLogoutConfirm = false)}
+/>
 
 <style>
   :global(.prevent-close) { pointer-events: auto; }
