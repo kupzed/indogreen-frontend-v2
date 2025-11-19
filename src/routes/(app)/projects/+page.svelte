@@ -8,7 +8,6 @@
   import ProjectFormModal from '$lib/components/form/ProjectFormModal.svelte';
   import ProjectFilterDesktop from '$lib/components/filters/ProjectFilterDesktop.svelte';
   import ProjectFilterMobile from '$lib/components/filters/ProjectFilterMobile.svelte';
-  import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 
   // ====== DATA ======
   let projects: any[] = [];
@@ -40,22 +39,6 @@
       activeView = views[idx];
     }
   }
-
-  // ====== CONFIRM DELETE STATE ======
-  let showConfirmDelete = false;
-  let confirmPending = false;
-  let targetProject: any = null;
-
-  function openConfirmDelete(p: any) {
-    targetProject = p;
-    showConfirmDelete = true;
-  }
-
-  function onCancelDelete() {
-    showConfirmDelete = false;
-    targetProject = null;
-  }
-
 
   // sidebar & mobile modal
   let showSidebar = true;        // desktop toggle
@@ -239,23 +222,14 @@
   }
 
   async function handleDelete(projectId: number) {
-    confirmPending = true;
+    if (!confirm('Apakah Anda yakin ingin menghapus project ini?')) return;
     try {
       await apiFetch(`/projects/${projectId}`, { method: 'DELETE', auth: true });
-      showConfirmDelete = false;
-      targetProject = null;
       alert('Project berhasil dihapus!');
-      fetchProjects();
+      goto('/projects'); fetchProjects();
     } catch (err: any) {
       alert('Gagal menghapus project: ' + (err?.message || 'Terjadi kesalahan'));
-    } finally {
-      confirmPending = false;
     }
-  }
-
-  function onConfirmDelete() {
-    if (!targetProject?.id) return;
-    handleDelete(targetProject.id);
   }
 
   // --- kunci scroll saat drawer filter mobile terbuka ---
@@ -617,7 +591,7 @@
                   <div class="flex justify-end px-4 py-2 sm:px-6 gap-2">
                     <button on:click|stopPropagation={() => openDetailDrawer(project)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700">Detail</button>
                     <button on:click|stopPropagation={() => openEditModal(project)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700">Edit</button>
-                    <button on:click|stopPropagation={() => openConfirmDelete(project.id)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700">Hapus</button>
+                    <button on:click|stopPropagation={() => handleDelete(project.id)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700">Hapus</button>
                   </div>
                 </li>
               {/each}
@@ -691,7 +665,7 @@
                             <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                             <span class="sr-only">Edit, {project.name}</span>
                           </button>
-                          <button on:click|stopPropagation={() => openConfirmDelete(project.id)} title="Delete" class="text-rose-600 hover:text-rose-700">
+                          <button on:click|stopPropagation={() => handleDelete(project.id)} title="Delete" class="text-rose-600 hover:text-rose-700">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
                             <span class="sr-only">Hapus, {project.name}</span>
                           </button>
@@ -771,14 +745,3 @@
 <Drawer bind:show={showDetailDrawer} title="Detail Project" on:close={() => (showDetailDrawer = false)}>
   <ProjectDetail project={selectedProject} />
 </Drawer>
-
-<ConfirmDialog
-  bind:open={showConfirmDelete}
-  title="Hapus Project?"
-  message={`Project "${targetProject?.name ?? ''}" akan dihapus permanen. Tindakan ini tidak bisa dibatalkan.`}
-  confirmText="Hapus"
-  cancelText="Batal"
-  pending={confirmPending}
-  on:confirm={onConfirmDelete}
-  on:cancel={onCancelDelete}
-/>
