@@ -31,9 +31,11 @@
   let loadingProject = true;
   let errorProject = '';
 
-  // Lists (vendors/customers untuk form)
+  // Lists (vendors/customers + kategori/jenis untuk form & filter)
   let customers: any[] = [];
   let vendors: any[] = [];
+  let activityKategoriList: string[] = [];
+  let activityJenisList: string[] = [];
 
   // ===== Helpers =====
   function qs(obj: Record<string, any>) {
@@ -170,14 +172,22 @@
   async function fetchActivities() {
     loadingActivities = true;
     errorActivities = '';
+
     try {
       const pid = project?.id ?? $page.params.id;
-      if (!pid) { errorActivities = 'Project ID tidak ditemukan.'; return; }
+      if (!pid) {
+        errorActivities = 'Project ID tidak ditemukan.';
+        return;
+      }
 
-      const url = `/projects/${pid}?${qs({
+      const url = `/activities?${qs({
+        project_id: pid,
         jenis: activityJenisFilter,
         kategori: activityKategoriFilter,
-        mitra_id: activityJenisFilter === 'Vendor' && activityVendorFilter ? activityVendorFilter : undefined,
+        mitra_id:
+          activityJenisFilter === 'Vendor' && activityVendorFilter
+            ? activityVendorFilter
+            : undefined,
         search: activitySearch,
         date_from: activityDateFromFilter,
         date_to: activityDateToFilter,
@@ -188,13 +198,27 @@
       })}`;
 
       const res: any = await apiFetch(url, { auth: true });
-      const data = res?.data ?? res ?? {};
-      activities = data.activities ?? [];
 
-      activityCurrentPage = data.activity_pagination?.current_page ?? 1;
-      activityLastPage    = data.activity_pagination?.last_page   ?? 1;
-      totalActivities     = data.activity_pagination?.total       ?? (Array.isArray(activities) ? activities.length : 0);
-      projectVendorOptions = Array.isArray(data.vendor_options) ? data.vendor_options : [];
+      // flexible parsing, mirip fetchCertificates
+      const root = res ?? {};
+      const items = root.data ?? root.items ?? root ?? [];
+
+      activities = Array.isArray(items) ? items : [];
+
+      const pagination = root.pagination ?? {};
+      activityCurrentPage =
+        pagination.current_page ?? root.current_page ?? 1;
+      activityLastPage =
+        pagination.last_page ?? root.last_page ?? 1;
+      totalActivities =
+        pagination.total ??
+        root.total ??
+        (Array.isArray(activities) ? activities.length : 0);
+
+      // vendor unik untuk dropdown "Vendor"
+      projectVendorOptions = Array.isArray(root.vendor_options)
+        ? root.vendor_options
+        : [];
     } catch (err: any) {
       errorActivities = err?.message || 'Gagal memuat aktivitas.';
     } finally {
@@ -231,11 +255,22 @@
   // ===== Dependencies untuk form =====
   async function fetchFormDependencies() {
     try {
-      const vendorsRes: any = await apiFetch('/mitra/vendors', { auth: true });
-      vendors = vendorsRes?.data ?? vendorsRes ?? [];
+      const res: any = await apiFetch('/activity/getFormDependencies', { auth: true });
 
-      const customersRes: any = await apiFetch('/mitra/customers', { auth: true });
-      customers = customersRes?.data ?? customersRes ?? [];
+      const root = res?.data ?? res ?? {};
+
+      // vendors & customers untuk form
+      vendors = Array.isArray(root.vendors) ? root.vendors : [];
+      customers = Array.isArray(root.customers) ? root.customers : [];
+
+      // list kategori & jenis dari backend
+      activityKategoriList = Array.isArray(root.kategori_list)
+        ? root.kategori_list
+        : [];
+
+      activityJenisList = Array.isArray(root.jenis_list)
+        ? root.jenis_list
+        : [];
     } catch (err) {
       console.error('Failed to fetch form dependencies:', err);
     }
@@ -510,11 +545,11 @@
     else if (createActivityForm.jenis === 'Vendor')   { if (!Array.isArray(vendors) || !vendors.some(v => v.id == createActivityForm.mitra_id)) createActivityForm.mitra_id = ''; }
     else                                              createActivityForm.mitra_id = '';
   }
-  $: if (!showCreateActivityModal) { createActivityForm.mitra_id = ''; createActivityForm.jenis = ''; previousCreateActivityJenis = ''; }
-
-  // List referensi
-  const activityKategoriList = ['Expense Report','Invoice','Purchase Order','Payment','Quotation','Faktur Pajak','Kasbon','Laporan Teknis','Surat Masuk','Surat Keluar','Kontrak'];
-  const activityJenisList = ['Internal','Customer','Vendor'];
+    $: if (!showCreateActivityModal) { 
+    createActivityForm.mitra_id = ''; 
+    createActivityForm.jenis = ''; 
+    previousCreateActivityJenis = ''; 
+  }
 
   // Switch List/Table
   let activeTab: 'detail' | 'activity' | 'certificates' = 'activity';
@@ -1737,6 +1772,8 @@
       projects={project ? [project] : []}
       showProjectSelect={false}
       {vendors}
+      {activityKategoriList}
+      {activityJenisList}
       allowRemoveAttachment={false}
       onSubmit={handleSubmitCreateActivity}
     />
@@ -1751,6 +1788,8 @@
         projects={project ? [project] : []}
         showProjectSelect={false}
         {vendors}
+        {activityKategoriList}
+        {activityJenisList}
         allowRemoveAttachment={true}
         onSubmit={handleSubmitUpdateActivity}
       />
