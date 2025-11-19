@@ -16,6 +16,8 @@
   let projects: any[] = [];
   let vendors: any[] = [];
   let customers: any[] = [];
+  let activityKategoriList: string[] = [];
+  let activityJenisList: string[] = [];
   let loading = true;
   let error = '';
 
@@ -78,14 +80,6 @@
     removed_existing_ids: []
   };
 
-  // options
-  const activityKategoriList = [
-    'Expense Report','Invoice','Purchase Order','Payment','Quotation',
-    'Faktur Pajak','Kasbon','Laporan Teknis','Surat Masuk','Surat Keluar',
-    'Kontrak', 'Berita Acara', 'Receive Item', 'Other',
-  ];
-  const activityJenisList = ['Internal','Customer','Vendor'];
-
   // ===== HELPERS =====
   function qs(obj: Record<string, any>) {
     const p = new URLSearchParams();
@@ -128,6 +122,14 @@
       const dep: any = await apiFetch('/activity/getFormDependencies', { auth: true });
       projects = dep?.projects ?? dep?.data?.projects ?? [];
       vendors  = dep?.vendors  ?? dep?.data?.vendors  ?? [];
+
+      activityKategoriList = Array.isArray(dep.kategori_list)
+        ? dep.kategori_list
+        : [];
+
+      activityJenisList = Array.isArray(dep.jenis_list)
+        ? dep.jenis_list
+        : [];
 
       try {
         const cust: any = await apiFetch('/mitra/customers', { auth: true });
@@ -728,6 +730,8 @@
   {form}
   {projects}
   {vendors}
+  {activityKategoriList}
+  {activityJenisList}
   allowRemoveAttachment={false}
   onSubmit={handleSubmitCreate}
 />
@@ -741,6 +745,8 @@
     {form}
     {projects}
     {vendors}
+    {activityKategoriList}
+    {activityJenisList}
     allowRemoveAttachment={true}
     onSubmit={handleSubmitUpdate}
   />

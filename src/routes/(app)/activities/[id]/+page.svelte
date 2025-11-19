@@ -13,6 +13,8 @@
   let projects: any[] = [];
   let vendors: any[] = [];
   let customers: any[] = [];
+  let activityKategoriList: string[] = [];
+  let activityJenisList: string[] = [];
 
   // ui state
   let loading = true;
@@ -110,6 +112,15 @@
       const res: any = await apiFetch('/activity/getFormDependencies', { auth: true });
       projects = res?.projects ?? res?.data?.projects ?? [];
       vendors  = res?.vendors  ?? res?.data?.vendors  ?? [];
+
+      activityKategoriList = Array.isArray(res.kategori_list)
+        ? res.kategori_list
+        : [];
+
+      activityJenisList = Array.isArray(res.jenis_list)
+        ? res.jenis_list
+        : [];
+
       // optional customers
       try {
         const c: any = await apiFetch('/mitra/customers', { auth: true });
@@ -333,6 +344,8 @@
     {form}
     {projects}
     {vendors}
+    {activityKategoriList}
+    {activityJenisList}
     allowRemoveAttachment={true}
     onSubmit={handleSubmitUpdate}
   />
