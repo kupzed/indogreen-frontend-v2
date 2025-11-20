@@ -37,6 +37,10 @@
   let activityKategoriList: string[] = [];
   let activityJenisList: string[] = [];
 
+  // Project form options (status & kategori)
+  let projectStatuses: string[] = [];
+  let projectKategoris: string[] = [];
+
   // ===== Helpers =====
   function qs(obj: Record<string, any>) {
     const p = new URLSearchParams();
@@ -67,6 +71,12 @@
       const res: any = await apiFetch(`/projects/${projectId}`, { auth: true });
       const data = res?.data ?? res ?? {};
       project = data.project ?? data;
+      projectStatuses = Array.isArray(data.project_status_list)
+        ? data.project_status_list
+        : [];
+      projectKategoris = Array.isArray(data.project_kategori_list)
+        ? data.project_kategori_list
+        : [];
 
       // Sinkronkan form edit awal
       editProjectForm = {
@@ -297,8 +307,6 @@
     mitra_id: '', kategori: '', lokasi: '',
     no_po: '', no_so: '', is_cert_projects: false,
   };
-  const projectStatuses = ['Ongoing', 'Prospect', 'Complete', 'Cancel'];
-  const projectKategoris = ['PLTS Hybrid','PLTS Ongrid','PLTS Offgrid','PJUTS All In One','PJUTS Two In One','PJUTS Konvensional'];
 
   function openEditProjectModal() { showEditProjectModal = true; }
   async function handleSubmitUpdateProject() {

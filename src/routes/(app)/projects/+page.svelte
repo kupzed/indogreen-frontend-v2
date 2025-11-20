@@ -95,10 +95,8 @@
   };
 
   // options
-  const projectStatuses = ['Ongoing', 'Prospect', 'Complete', 'Cancel'];
-  const projectKategoris = [
-    'PLTS Hybrid','PLTS Ongrid','PLTS Offgrid','PJUTS All In One','PJUTS Two In One','PJUTS Konvensional'
-  ];
+  let projectStatuses: string[] = [];
+  let projectKategoris: string[] = [];
 
   // ====== HELPERS ======
   function qs(obj: Record<string, any>) {
@@ -138,19 +136,23 @@
     }
   }
 
-  async function fetchCustomers() {
+  async function fetchProjectFormDependencies() {
     try {
-      const res: any = await apiFetch('/mitra/customers', { auth: true });
-      customers = res?.data ?? res ?? [];
+      const res: any = await apiFetch('/projects/getFormDependencies', { auth: true });
+      const root = res?.data ?? res ?? {};
+
+      customers = Array.isArray(root.customers) ? root.customers : [];
+      projectStatuses = Array.isArray(root.project_status_list) ? root.project_status_list : [];
+      projectKategoris = Array.isArray(root.project_kategori_list) ? root.project_kategori_list : [];
     } catch (err) {
-      console.error('Failed to fetch customers:', err);
+      console.error('Failed to fetch project form dependencies:', err);
     }
   }
 
   onMount(() => {
     if (!getToken()) { goto('/auth/login'); return; }
     fetchProjects();
-    fetchCustomers();
+    fetchProjectFormDependencies();
   });
 
   function handleFilterOrSearch() { currentPage = 1; fetchProjects(); }

@@ -21,10 +21,8 @@
   };
 
   export let customers: Array<{ id: number; nama: string }> = [];
-  export let projectStatuses: string[] = ['Ongoing', 'Prospect', 'Complete', 'Cancel'];
-  export let projectKategoris: string[] = [
-    'PLTS Hybrid','PLTS Ongrid','PLTS Offgrid','PJUTS All In One','PJUTS Two In One','PJUTS Konvensional'
-  ];
+  export let projectStatuses: string[] = [];
+  export let projectKategoris: string[] = [];
 
   export let onSubmit: () => void | Promise<void>;
 
