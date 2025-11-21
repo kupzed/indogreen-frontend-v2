@@ -1,6 +1,5 @@
 <script lang="ts">
   import '../../app.css';
-  import favicon from '$lib/assets/favicon.svg';
   import { goto } from '$app/navigation';
   import { getToken } from '$lib/api';
   import { onMount } from 'svelte';
@@ -29,10 +28,6 @@
     return unsub;
   });
 </script>
-
-<svelte:head>
-  <link rel="icon" href={favicon} />
-</svelte:head>
 
 <div class="min-h-screen bg-gradient-to-b from-violet-50 to-violet-50 dark:from-[#0b0317] dark:to-[#0b0317]">
   <AppNavbar />
