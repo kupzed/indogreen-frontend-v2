@@ -34,18 +34,6 @@
 </script>
 
 <div class="border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur p-4 space-y-4">
-  <!-- Sortir (Create) -->
-  <FilterSection title="Sortir" on:clear={() => setCreatedSort('desc')} showClear={!(sortBy==='created' && sortDir==='desc')}>
-    <span class="block text-xs text-slate-600 dark:text-slate-300 mb-1">Urutan Create</span>
-    <select
-      aria-label="Sortir Create"
-      class="w-full px-3 py-2 rounded-xl text-sm border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70"
-      on:change={(e) => setCreatedSort(((e.target as HTMLSelectElement).value as 'asc'|'desc'))}
-    >
-      <option value="desc" selected={sortBy==='created' && sortDir==='desc'}>Create: Terbaru</option>
-      <option value="asc"  selected={sortBy==='created' && sortDir==='asc'}>Create: Terlama</option>
-    </select>
-  </FilterSection>
 
   <!-- Status -->
   <FilterSection title="Status" showClear={!!statusValue} on:clear={() => update('status','')} >
@@ -104,10 +92,21 @@
   </FilterSection>
 
   <!-- Tanggal + NEW: segmented sort by start_date -->
-  <FilterSection title="Tanggal" showClear={!!(dateFrom || dateTo) || sortBy==='start_date'} on:clear={() => { update('dateFrom',''); update('dateTo',''); setCreatedSort('desc'); }}>
+  <FilterSection title="Sortir" showClear={!!(dateFrom || dateTo) || sortBy==='start_date'} on:clear={() => { update('dateFrom',''); update('dateTo',''); setCreatedSort('desc'); }}>
     <div class="space-y-3">
       <!-- segmented untuk urutkan tanggal dilaksanakan -->
       <div>
+        <span class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
+          Urutkan Berdasarkan Create
+        </span>
+        <select
+          aria-label="Sortir Create"
+          class="w-full mb-2 px-3 py-2 rounded-xl text-sm border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70"
+          on:change={(e) => setCreatedSort(((e.target as HTMLSelectElement).value as 'asc'|'desc'))}
+        >
+          <option value="desc" selected={sortBy==='created' && sortDir==='desc'}>Create: Terbaru</option>
+          <option value="asc"  selected={sortBy==='created' && sortDir==='asc'}>Create: Terlama</option>
+        </select>
         <span class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
           Urutkan Tanggal Dilaksanakan
         </span>

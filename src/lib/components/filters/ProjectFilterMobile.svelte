@@ -116,10 +116,21 @@
           </div>
         </FilterSection>
 
-        <FilterSection title="Tanggal" showClear={!!(dateFrom || dateTo) || sortBy==='start_date'} on:clear={() => { update('dateFrom',''); update('dateTo',''); setCreatedSort('desc'); }}>
+        <FilterSection title="Sortir" showClear={!!(dateFrom || dateTo) || sortBy==='start_date'} on:clear={() => { update('dateFrom',''); update('dateTo',''); setCreatedSort('desc'); }}>
           <div class="space-y-3">
             <!-- segmented sort -->
             <div>
+              <span class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">Urutkan Berdasarkan Create</span>
+              <div class="inline-flex w-full rounded-xl overflow-hidden" role="tablist" aria-label="Urutan berdasarkan create">
+                <select
+                  aria-label="Sortir Create"
+                  class="w-full px-3 py-2 rounded-xl text-sm border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70"
+                  on:change={(e) => setCreatedSort(((e.target as HTMLSelectElement).value as 'asc'|'desc'))}
+                >
+                  <option value="desc" selected={sortBy==='created' && sortDir==='desc'}>Create: Terbaru</option>
+                  <option value="asc"  selected={sortBy==='created' && sortDir==='asc'}>Create: Terlama</option>
+                </select>
+              </div>
               <span class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">Urutkan Tanggal Dilaksanakan</span>
               <div class="inline-flex w-full rounded-xl overflow-hidden border border-black/5 dark:border-white/10" role="tablist" aria-label="Urutan tanggal dilaksanakan">
                 <button
@@ -140,6 +151,10 @@
               <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">Gunakan bagian <b>Sortir</b> di atas untuk kembali ke urutan <b>Create</b>.</p>
             </div>
 
+            <div class="grid grid-cols-2 gap-2">
+              <span class="block text-sm font-medium text-slate-700 dark:text-slate-300">Dari Tanggal</span>
+              <span class="block text-sm font-medium text-slate-700 dark:text-slate-300">Sampai Tanggal</span>
+            </div>
             <div class="grid grid-cols-2 gap-2">
               <input type="date" value={dateFrom} on:change={(e)=>update('dateFrom',(e.target as HTMLInputElement).value)}
                      class="px-3 py-2 rounded-xl text-sm border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70" />
