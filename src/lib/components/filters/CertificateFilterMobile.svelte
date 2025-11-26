@@ -42,20 +42,6 @@
 
       <div class="space-y-4 max-h-[65vh] overflow-y-auto [@supports(-webkit-overflow-scrolling:touch)]:[-webkit-overflow-scrolling:touch]">
 
-        <FilterSection title="Sortir" startOpen>
-          <div class="mt-2">
-            <select
-              bind:value={sortDir}
-              on:change={() => { update('sortBy','created'); update('sortDir', sortDir); }}
-              class="w-full px-3 py-2 rounded-xl text-sm border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70"
-              aria-label="Sortir Create"
-            >
-              <option value="desc">Create: Terbaru</option>
-              <option value="asc">Create: Terlama</option>
-            </select>
-          </div>
-        </FilterSection>
-
         <FilterSection title="Status" showClear={!!statusValue} on:clear={() => update('status','')} startOpen>
           <div class="mt-2 flex flex-wrap gap-2">
             {#each statusOptions as s}
@@ -70,9 +56,19 @@
           </div>
         </FilterSection>
 
-        <FilterSection title="Tanggal" showClear={!!(dateFrom || dateTo)} on:clear={() => { update('dateFrom',''); update('dateTo',''); }}>
+        <FilterSection title="Sortir" showClear={!!(dateFrom || dateTo)} on:clear={() => { update('dateFrom',''); update('dateTo',''); }}>
           <div class="space-y-3">
             <div>
+              <span class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Urutkan Berdasarkan Create</span>
+              <select
+                bind:value={sortDir}
+                on:change={() => { update('sortBy','created'); update('sortDir', sortDir); }}
+                class="w-full mb-2 px-3 py-2 rounded-xl text-sm border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70"
+                aria-label="Sortir Create"
+              >
+                <option value="desc">Terbaru</option>
+                <option value="asc">Terlama</option>
+              </select>
               <span class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Urutkan Berdasarkan</span>
               <select
                 bind:value={dateSortField}
@@ -106,6 +102,10 @@
               </p>
             </div>
 
+            <div class="grid grid-cols-2 gap-2">
+              <span class="block text-sm font-medium text-slate-700 dark:text-slate-300">Dari Tanggal</span>
+              <span class="block text-sm font-medium text-slate-700 dark:text-slate-300">Sampai Tanggal</span>
+            </div>
             <div class="grid grid-cols-2 gap-2">
               <input type="date" value={dateFrom} on:change={(e)=>update('dateFrom',(e.target as HTMLInputElement).value)}
                      class="px-3 py-2 rounded-xl text-sm border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70" />
