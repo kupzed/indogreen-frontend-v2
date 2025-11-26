@@ -1223,11 +1223,11 @@
                                 <p class="text-sm text-slate-600 dark:text-slate-300">
                                   Jenis: {activity.jenis}
                                   {#if activity.jenis === 'Vendor' && activity.mitra}
-                                    · Vendor: {activity.mitra.nama}
+                                    | Vendor: {activity.mitra.nama}
                                   {:else if activity.jenis === 'Customer' && activity.mitra}
-                                    · Customer: {activity.mitra.nama}
+                                    | Customer: {activity.mitra.nama}
                                   {/if}
-                                  · Deskripsi: {activity.description.substring(0, 40)}{activity.description.length > 40 ? '...' : ''}
+                                  | From: {activity.from || '-'} | Deskripsi: {activity.short_desc}
                                 </p>
                                 <p class="mt-2 sm:mt-0 inline-flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400">
                                   <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" /></svg>
@@ -1616,7 +1616,7 @@
                                 <span class={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${getCertificateStatusBadgeClasses(item.status)}`}>{item.status}</span>
                               </div>
                               <div class="mt-2 sm:flex sm:justify-between">
-                                <p class="text-sm text-slate-600 dark:text-slate-300">Barang: {item.barang_certificate?.name || '-'} · No: {item.no_certificate}</p>
+                                <p class="text-sm text-slate-600 dark:text-slate-300">Barang: {item.barang_certificate?.name || '-'} | No: {item.no_certificate}</p>
                                 <p class="mt-2 sm:mt-0 inline-flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400">
                                   <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" /></svg>
                                   {#if item.date_of_issue}Terbit: {new Date(item.date_of_issue).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}{:else}Terbit: -{/if}

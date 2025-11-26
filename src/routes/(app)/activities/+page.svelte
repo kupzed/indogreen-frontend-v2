@@ -585,7 +585,7 @@
                         {#if (activity.jenis === 'Vendor' || activity.jenis === 'Customer') && activity.mitra}
                           | {activity.jenis}: {activity.mitra.nama}
                         {/if}
-                        | {activity.description?.substring(0, 60) || ''}{activity.description?.length > 60 ? '...' : ''}
+                        | From: {activity.from || '-'} | Deskripsi: {activity.short_desc}
                       </p>
                       <p class="mt-2 sm:mt-0 inline-flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400">
                         <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/></svg>
@@ -635,7 +635,7 @@
                     <tr>
                       <td class="whitespace-nowrap px-3 py-4 text-sm font-medium text-slate-900 dark:text-slate-100">
                         <a href={`/activities/${a.id}`} class="text-violet-700 dark:text-violet-300 hover:underline">{a.name}</a><br>
-                        <span class="text-xs text-slate-500 dark:text-slate-400">{a.short_desc}</span>
+                        <span class="text-xs text-slate-500 dark:text-slate-400">From: {a.from || '-'} | {a.short_desc}</span>
                       </td>
                       <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-600 dark:text-slate-300">
                         {a.project?.name?.substring(0, 25) || '-'}{a.project?.name?.length > 25 ? '...' : ''}
