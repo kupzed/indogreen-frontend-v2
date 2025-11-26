@@ -127,8 +127,8 @@
   let activityDateFromFilter = '';
   let activityDateToFilter = '';
   let showActivityDateFilter = false;
-  let activitySortBy: 'created' | 'activity_date' = 'created';
-  let activitySortDir: 'asc' | 'desc' = 'desc';
+  let activitySortBy: 'created' | 'activity_date' = 'activity_date';
+  let activitySortDir: 'asc' | 'desc' = 'asc';
 
   // ===== Activity: chips untuk filter aktif =====
   let activityFilterChips: Array<{key:string; label:string}> = [];

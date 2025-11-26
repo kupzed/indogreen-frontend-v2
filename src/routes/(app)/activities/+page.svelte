@@ -27,8 +27,8 @@
   let kategoriFilter = '';
   let dateFromFilter = '';
   let dateToFilter = '';
-  let sortBy: 'created' | 'activity_date' = 'created';
-  let sortDir: 'desc' | 'asc' = 'desc';
+  let sortBy: 'created' | 'activity_date' = 'activity_date';
+  let sortDir: 'desc' | 'asc' = 'asc';
 
   // ===== UI STATE =====
   let activeView: 'table' | 'list' = 'table';
