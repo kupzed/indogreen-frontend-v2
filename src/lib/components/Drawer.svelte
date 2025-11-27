@@ -61,7 +61,7 @@
             </div>
           </div>
 
-          <div class="flex-1 overflow-y-auto px-4 sm:px-6 py-4 text-slate-900 dark:text-slate-100">
+          <div class="flex-1 overflow-y-auto px-4 sm:px-6 py-4 text-slate-900 dark:text-slate-100 no-scrollbar">
             <slot />
           </div>
         </div>
