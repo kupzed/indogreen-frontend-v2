@@ -40,7 +40,7 @@
         <button class="h-9 w-9 grid place-items-center rounded-xl border border-black/5 dark:border-white/10" on:click={() => dispatch('close')} aria-label="Tutup">✕</button>
       </div>
 
-      <div class="space-y-4 max-h-[65vh] overflow-y-auto [@supports(-webkit-overflow-scrolling:touch)]:[-webkit-overflow-scrolling:touch]">
+      <div class="space-y-4 max-h-[65vh] overflow-y-auto no-scrollbar [@supports(-webkit-overflow-scrolling:touch)]:[-webkit-overflow-scrolling:touch]">
 
         <FilterSection title="Status" showClear={!!statusValue} on:clear={() => update('status','')} startOpen>
           <div class="mt-2 flex flex-wrap gap-2">

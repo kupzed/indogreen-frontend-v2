@@ -57,7 +57,7 @@
         <button class="h-9 w-9 grid place-items-center rounded-xl border border-black/5 dark:border-white/10" on:click={() => dispatch('close')} aria-label="Tutup">✕</button>
       </div>
 
-      <div class="space-y-4 max-h-[65vh] overflow-y-auto">
+      <div class="space-y-4 max-h-[65vh] overflow-y-auto no-scrollbar">
         <!-- Sortir (Create) -->
         <FilterSection title="Sortir" on:clear={() => setCreatedSort('desc')} showClear={!(sortBy==='created' && sortDir==='desc')}>
           <select

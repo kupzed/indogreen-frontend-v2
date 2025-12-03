@@ -35,7 +35,7 @@
         <button class="h-9 w-9 grid place-items-center rounded-xl border border-black/5 dark:border-white/10" on:click={() => dispatch('close')} aria-label="Tutup">✕</button>
       </div>
 
-      <div class="space-y-4 max-h-[65vh] overflow-y-auto">
+      <div class="space-y-4 max-h-[65vh] overflow-y-auto no-scrollbar">
         <!-- ⬇️ NEW: SORTIR -->
         <FilterSection title="Sortir">
           <div class="inline-flex w-full rounded-md overflow-hidden border border-black/5 dark:border-white/10">
