@@ -1,44 +1,37 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import Swal from 'sweetalert2';
-  import { apiFetch, getToken } from '$lib/api';
+  import { apiFetch } from '$lib/api';
   import { setUser, patchUser } from '$lib/stores/user';
 
-  // ===== UI & global state =====
-  let activeTab: 'profile' | 'keamanan' = 'profile';
+  // ===== UI & Global State =====
+  let activeTab: 'profile' | 'keamanan' | 'role' = 'profile';
   let loading = true;
   let saving = false;
   let errorMsg = '';
-  let disabled = false;
 
-  // snapshot untuk cek "dirty"
+  // State khusus Role
+  let canManageRoles = false;
+  let currentIsOnlyAdmin = false;
+  let savingRole = false;
+
+  // ===== Profile State =====
+  // Snapshot untuk cek "dirty"
   let serverName = '';
   let serverEmail = '';
 
-  // ===== Profile form =====
   let formData = {
     name: '',
-    email: '',
+    email: ''
   };
 
   // reaktif: tombol save nonaktif jika tidak ada yang berubah
-  $: isDirty = formData.name.trim() !== serverName;
+  $: isDirtyProfile = formData.name.trim() !== serverName;
 
-  // ===== SweetAlert toast helpers =====
-  function toast(icon: 'success' | 'error', title: string, text?: string) {
-    Swal.fire({
-      icon, title, text,
-      timer: 2600, showConfirmButton: false,
-      toast: true, position: 'top-end'
-    });
-  }
-  const showSuccess = (m: string) => toast('success', 'Berhasil!', m);
-  const showError   = (m: string) => toast('error', 'Gagal', m);
-
-  // ===== Password (Keamanan) =====
+  // ===== Password State =====
   let pw = { current: '', next: '', confirm: '' };
   let showPw = { current: false, next: false, confirm: false };
-  let savingPw = false; // <-- NEW
+  let savingPw = false;
 
   $: pwRules = {
     len8: pw.next.length >= 8,
@@ -48,13 +41,300 @@
     confirmMatch: pw.next !== '' && pw.next === pw.confirm
   };
 
-  // ikutkan !savingPw supaya tombol ikut nonaktif saat submit berlangsung
   $: canUpdatePw =
-    pwRules.len8 && pwRules.hasLower && pwRules.hasUpper && pwRules.notSameAsOld && pwRules.confirmMatch && !savingPw;
+    pwRules.len8 &&
+    pwRules.hasLower &&
+    pwRules.hasUpper &&
+    pwRules.notSameAsOld &&
+    pwRules.confirmMatch &&
+    !savingPw;
 
+  // ===== ROLE MANAGEMENT STATE =====
+  type RoleUser = {
+    id: number;
+    name: string;
+    email: string;
+    roles: string[];
+    permissions: string[];
+  };
+
+  type PermissionActions = {
+    view: boolean;
+    create: boolean;
+    update: boolean;
+    delete: boolean;
+  };
+
+  const MODULE_KEYS = ['project', 'activity', 'mitra', 'bc', 'certificate'] as const;
+  type ModuleKey = (typeof MODULE_KEYS)[number];
+
+  const MODULE_CONFIG: { key: ModuleKey; label: string; desc: string }[] = [
+    { key: 'project', label: 'Projects', desc: 'Akses menu manajemen project' },
+    { key: 'activity', label: 'Activities', desc: 'Akses menu laporan aktivitas' },
+    { key: 'mitra', label: 'Mitra', desc: 'Akses data kemitraan' },
+    { key: 'bc', label: 'Barang Certificates', desc: 'Akses data barang certificates' },
+    { key: 'certificate', label: 'Certificates', desc: 'Akses data certificates' }
+  ];
+
+  const ACTION_KEYS: (keyof PermissionActions)[] = ['view', 'create', 'update', 'delete'];
+  const ACTION_LABELS: Record<keyof PermissionActions, string> = {
+    view: 'View',
+    create: 'Create',
+    update: 'Update',
+    delete: 'Delete'
+  };
+
+  type ModulesState = Record<ModuleKey, PermissionActions>;
+
+  function createEmptyModules(): ModulesState {
+    const base: PermissionActions = { view: false, create: false, update: false, delete: false };
+    return {
+      project: { ...base },
+      activity: { ...base },
+      mitra: { ...base },
+      bc: { ...base },
+      certificate: { ...base }
+    };
+  }
+
+  function cloneModules(mods: ModulesState): ModulesState {
+    const copy = {} as ModulesState;
+    for (const moduleKey of MODULE_KEYS) {
+      copy[moduleKey] = { ...mods[moduleKey] };
+    }
+    return copy;
+  }
+
+  type RoleForm = {
+    userId: string;
+    selectedRole: string;
+    modules: ModulesState;
+  };
+
+  let users: RoleUser[] = [];
+  let myRoles: string[] = [];
+  let selectedUserIsSuperAdmin = false;
+
+  let roleData: RoleForm = {
+    userId: '',
+    selectedRole: 'user',
+    modules: createEmptyModules()
+  };
+
+  // Snapshot untuk cek dirty state pada Role
+  let initialRoleData: RoleForm = {
+    userId: '',
+    selectedRole: 'user',
+    modules: createEmptyModules()
+  };
+
+  // modul mana yang sedang di-expand
+  let expandedModules: Record<ModuleKey, boolean> = {
+    project: true,
+    activity: true,
+    mitra: true,
+    bc: true,
+    certificate: true
+  };
+
+  $: roleDirty = JSON.stringify(roleData) !== JSON.stringify(initialRoleData);
+
+  // ===== Helpers =====
+  function toast(icon: 'success' | 'error', title: string, text?: string) {
+    Swal.fire({
+      icon,
+      title,
+      text,
+      timer: 2600,
+      showConfirmButton: false,
+      toast: true,
+      position: 'top-end'
+    });
+  }
+  const showSuccess = (m: string) => toast('success', 'Berhasil!', m);
+  const showError = (m: string) => toast('error', 'Gagal', m);
+
+  // ===== LOGIC: ROLE =====
+  function applyUserRole(user: RoleUser | null) {
+    if (!user) {
+      roleData = {
+        userId: '',
+        selectedRole: 'user',
+        modules: createEmptyModules()
+      };
+      selectedUserIsSuperAdmin = false;
+      initialRoleData = {
+        userId: '',
+        selectedRole: 'user',
+        modules: createEmptyModules()
+      };
+      return;
+    }
+
+    const perms = user.permissions ?? [];
+    const modules = createEmptyModules();
+
+    // isi modules berdasarkan permission yang dimiliki user
+    for (const moduleKey of MODULE_KEYS) {
+      for (const action of ACTION_KEYS) {
+        const permName = `${moduleKey}-${action}`;
+        modules[moduleKey][action] = perms.includes(permName);
+      }
+    }
+
+    roleData = {
+      userId: String(user.id),
+      selectedRole: user.roles && user.roles.length > 0 ? user.roles[0] : 'user',
+      modules
+    };
+
+    selectedUserIsSuperAdmin = user.roles?.includes('super_admin') ?? false;
+
+    initialRoleData = {
+      userId: roleData.userId,
+      selectedRole: roleData.selectedRole,
+      modules: cloneModules(roleData.modules)
+    };
+  }
+
+  function buildPermissionsPayload(r: RoleForm): Record<string, boolean> {
+    const permissions: Record<string, boolean> = {};
+
+    for (const moduleKey of MODULE_KEYS) {
+      const mod = r.modules[moduleKey];
+      for (const action of ACTION_KEYS) {
+        permissions[`${moduleKey}-${action}`] = mod[action];
+      }
+    }
+
+    return permissions;
+  }
+
+  function toggleModuleAll(moduleKey: ModuleKey, checked: boolean) {
+    const updated: PermissionActions = {
+      view: checked,
+      create: checked,
+      update: checked,
+      delete: checked
+    };
+
+    roleData = {
+      ...roleData,
+      modules: {
+        ...roleData.modules,
+        [moduleKey]: updated
+      }
+    };
+  }
+
+  function handleToggleAction(
+    moduleKey: ModuleKey,
+    action: keyof PermissionActions,
+    checked: boolean
+  ) {
+    const updatedModule: PermissionActions = {
+      ...roleData.modules[moduleKey],
+      [action]: checked
+    };
+
+    roleData = {
+      ...roleData,
+      modules: {
+        ...roleData.modules,
+        [moduleKey]: updatedModule
+      }
+    };
+  }
+
+  function moduleAllChecked(moduleKey: ModuleKey): boolean {
+    const mod = roleData.modules[moduleKey];
+    return ACTION_KEYS.every((a) => mod[a]);
+  }
+
+  function moduleSomeChecked(moduleKey: ModuleKey): boolean {
+    const mod = roleData.modules[moduleKey];
+    const any = ACTION_KEYS.some((a) => mod[a]);
+    const all = ACTION_KEYS.every((a) => mod[a]);
+    return any && !all;
+  }
+
+  async function handleSubmitRole() {
+    if (!roleDirty || savingRole) return;
+    if (!roleData.userId) {
+      showError('Silakan pilih user terlebih dahulu.');
+      return;
+    }
+
+    savingRole = true;
+    try {
+      await apiFetch('/auth/role', {
+        method: 'PUT',
+        auth: true,
+        body: {
+          user_id: Number(roleData.userId),
+          permissions: buildPermissionsPayload(roleData),
+          role: roleData.selectedRole
+        }
+      });
+
+      // Update snapshot agar tombol save disable kembali
+      initialRoleData = {
+        userId: roleData.userId,
+        selectedRole: roleData.selectedRole,
+        modules: cloneModules(roleData.modules)
+      };
+      showSuccess('Role & akses berhasil diperbarui');
+    } catch (err: any) {
+      const msg = err?.message || 'Gagal menyimpan pengaturan role.';
+      showError(msg);
+    } finally {
+      savingRole = false;
+    }
+  }
+
+  function handleResetRole() {
+    roleData = {
+      userId: initialRoleData.userId,
+      selectedRole: initialRoleData.selectedRole,
+      modules: cloneModules(initialRoleData.modules)
+    };
+  }
+
+  // ===== LOGIC: PROFILE =====
+  async function handleSubmitProfile(e: Event) {
+    e.preventDefault();
+    if (!isDirtyProfile) return;
+    saving = true;
+    errorMsg = '';
+    try {
+      const data: any = await apiFetch('/auth/profile', {
+        method: 'PUT',
+        body: { name: formData.name },
+        auth: true
+      });
+
+      serverName = data?.name ?? formData.name;
+      formData.name = serverName;
+      patchUser({ name: serverName });
+      showSuccess('Profil berhasil diperbarui');
+    } catch (err: any) {
+      errorMsg = err?.message || 'Gagal memperbarui nama.';
+      showError(errorMsg);
+    } finally {
+      saving = false;
+    }
+  }
+
+  async function handleCancelProfile() {
+    // Reset ke data server
+    formData.name = serverName;
+    formData.email = serverEmail;
+  }
+
+  // ===== LOGIC: PASSWORD =====
   async function handleChangePassword() {
     if (!canUpdatePw) return;
-    savingPw = true; // <-- NEW
+    savingPw = true;
     try {
       await apiFetch('/auth/password', {
         method: 'PUT',
@@ -72,22 +352,40 @@
       const msg = err?.message || 'Gagal memperbarui password.';
       showError(msg);
     } finally {
-      savingPw = false; // <-- NEW
+      savingPw = false;
     }
   }
 
-
-  // ===== Bootstrap user data =====
+  // ===== BOOTSTRAP DATA =====
   onMount(async () => {
-    loading = true; errorMsg = '';
+    loading = true;
+    errorMsg = '';
     try {
-      // backend kamu: POST /auth/me
-      const data: any = await apiFetch('/auth/me', { method: 'POST', auth: true });
-      serverName  = data?.name  ?? '';
-      serverEmail = data?.email ?? '';
-      formData.name  = serverName;
+      // 1. Get Profile
+      const userData: any = await apiFetch('/auth/me', { method: 'POST', auth: true });
+      serverName = userData?.name ?? '';
+      serverEmail = userData?.email ?? '';
+      formData.name = serverName;
       formData.email = serverEmail;
       setUser({ name: serverName, email: serverEmail });
+
+      // 2. Get My Roles (Check permissions)
+      const roleRes: any = await apiFetch('/auth/role/me', { auth: true });
+      myRoles = roleRes?.roles ?? [];
+
+      const isAdmin = myRoles.includes('admin');
+      const isSA = myRoles.includes('super_admin');
+
+      currentIsOnlyAdmin = isAdmin && !isSA;
+      canManageRoles = isAdmin || isSA;
+
+      // 3. Get Users List (If allowed)
+      if (canManageRoles) {
+        const usersRes: any = await apiFetch('/auth/role/users', { auth: true });
+        users = usersRes?.data ?? usersRes ?? [];
+
+        if (users.length > 0) applyUserRole(users[0]);
+      }
     } catch (err: any) {
       errorMsg = err?.message || 'Gagal memuat data pengguna.';
       showError(errorMsg);
@@ -95,46 +393,6 @@
       loading = false;
     }
   });
-
-  // ===== Actions (Profile) =====
-  async function handleSubmit(e: Event) {
-    e.preventDefault();
-    if (!isDirty) return;
-    saving = true; errorMsg = '';
-    try {
-      const data: any = await apiFetch('/auth/profile', {
-        method: 'PUT',
-        body: { name: formData.name },
-        auth: true
-      });
-      // update snapshot & store
-      serverName = data?.name ?? formData.name;
-      formData.name = serverName;
-      patchUser({ name: serverName });
-      showSuccess('Profil berhasil diperbarui');
-    } catch (err: any) {
-      errorMsg = err?.message || 'Gagal memperbarui nama.';
-      showError(errorMsg);
-    } finally {
-      saving = false;
-    }
-  }
-
-  async function handleCancel() {
-    loading = true; errorMsg = '';
-    try {
-      const data: any = await apiFetch('/auth/me', { method: 'POST', auth: true });
-      serverName  = data?.name  ?? '';
-      serverEmail = data?.email ?? '';
-      formData.name  = serverName;
-      formData.email = serverEmail;
-      setUser({ name: serverName, email: serverEmail });
-    } catch {
-      errorMsg = 'Gagal memulihkan data.'; showError(errorMsg);
-    } finally {
-      loading = false;
-    }
-  }
 </script>
 
 <svelte:head>
@@ -146,19 +404,19 @@
   <h1 class="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-slate-100">Settings</h1>
 </div>
 
-<!-- TABS -->
+<!-- TABS NAVIGATION -->
 {#if loading}
-  <!-- Tabs skeleton -->
-  <div class="inline-flex mb-5 rounded-2xl p-1 bg-slate-100 dark:bg-white/5 border border-black/5 dark:border-white/10" role="tablist" aria-busy="true">
+  <div class="inline-flex mb-5 rounded-2xl p-1 bg-slate-100 dark:bg-white/5 border border-black/5 dark:border-white/10">
     <div class="h-8 w-20 rounded-xl bg-slate-200/70 dark:bg-white/10 animate-pulse"></div>
     <div class="ml-1 h-8 w-24 rounded-xl bg-slate-200/70 dark:bg-white/10 animate-pulse"></div>
+    <div class="ml-1 h-8 w-20 rounded-xl bg-slate-200/70 dark:bg-white/10 animate-pulse"></div>
   </div>
 {:else}
   <div class="inline-flex mb-5 rounded-2xl p-1 bg-slate-100 dark:bg-white/5 border border-black/5 dark:border-white/10" role="tablist" aria-label="Pengaturan">
     <button
       id="tab-profile" role="tab" aria-controls="panel-profile" aria-selected={activeTab === 'profile'}
       on:click={() => (activeTab = 'profile')}
-      class="px-4 py-2 rounded-xl text-sm font-semibold transition text-slate-600 dark:text-slate-300"
+      class="px-4 py-2 rounded-xl text-sm font-semibold transition text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
       class:bg-white={activeTab === 'profile'}
       class:dark:bg-violet-900={activeTab === 'profile'}
       class:text-violet-800={activeTab === 'profile'}
@@ -169,7 +427,7 @@
     <button
       id="tab-keamanan" role="tab" aria-controls="panel-keamanan" aria-selected={activeTab === 'keamanan'}
       on:click={() => (activeTab = 'keamanan')}
-      class="px-4 py-2 rounded-xl text-sm font-semibold transition text-slate-600 dark:text-slate-300"
+      class="px-4 py-2 rounded-xl text-sm font-semibold transition text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
       class:bg-white={activeTab === 'keamanan'}
       class:dark:bg-violet-900={activeTab === 'keamanan'}
       class:text-violet-800={activeTab === 'keamanan'}
@@ -177,112 +435,65 @@
     >
       Keamanan
     </button>
+
+    {#if canManageRoles}
+      <button
+        on:click={() => (activeTab = 'role')}
+        class="px-4 py-2 rounded-xl text-sm font-semibold transition capitalize
+               {activeTab === 'role' 
+                 ? 'bg-white text-violet-800 shadow-sm dark:bg-violet-900 dark:text-white' 
+                 : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'}"
+      >
+        Role & Akses
+      </button>
+    {/if}
   </div>
 {/if}
 
+<!-- ERROR ALERT -->
 {#if errorMsg}
   <div class="mb-4 rounded-2xl border border-red-200/50 dark:border-red-800/40 bg-red-50/70 dark:bg-red-900/30 px-4 py-3 text-sm text-red-700 dark:text-red-200">
     {errorMsg}
   </div>
 {/if}
 
-<div class="max-w-1xl">
-  <!-- ===================== PROFILE TAB ===================== -->
+<div class="max-w-1xl">  
+  <!-- ===================== TAB: PROFILE ===================== -->
   {#if activeTab === 'profile'}
-    <!-- role tabpanel DI PEMBUNGKUS, bukan di <form> -->
-    <div id="panel-profile" role="tabpanel" aria-labelledby="tab-profile">
-      <form on:submit={handleSubmit}>
-        {#if loading}
-          <!-- PROFILE SKELETON -->
-          <section class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur p-5 sm:p-6 lg:p-8 shadow-sm" role="status" aria-busy="true">
-            <div class="pb-6">
-              <div class="h-6 w-36 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div>
-              <div class="mt-2 h-4 w-64 rounded-md bg-slate-200/60 dark:bg-white/10 animate-pulse"></div>
+    <div id="panel-profile" role="tabpanel">
+      <form on:submit={handleSubmitProfile}>
+        <section class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur p-5 sm:p-6 lg:p-8 shadow-sm">
+          <div class="border-b border-black/5 dark:border-white/10 pb-6 mb-6">
+            <h2 class="text-lg sm:text-xl font-semibold text-slate-900 dark:text-slate-100">Personal Info</h2>
+            <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Update informasi dasar akun Anda.</p>
+          </div>
+          
+          <div class="space-y-5">
+            <div>
+              <label for="name" class="block text-sm font-medium text-slate-900 dark:text-slate-200 mb-2">Full Name</label>
+              <input id="name" type="text" bind:value={formData.name} disabled={loading || saving}
+                class="block w-full rounded-xl bg-white dark:bg-[#0f0d1b] px-3 py-2 text-slate-900 dark:text-slate-100 outline-slate-200/80 dark:outline-white/10 focus:outline-violet-600 disabled:opacity-60" />
             </div>
-            <div class="space-y-5">
-              <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-6 items-start">
-                <div class="sm:col-span-3">
-                  <div class="h-4 w-16 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div>
-                </div>
-                <div class="sm:col-span-9">
-                  <div class="h-10 w-full rounded-xl bg-slate-200/70 dark:bg-white/5 animate-pulse"></div>
-                </div>
-              </div>
-              <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-6 items-center">
-                <div class="sm:col-span-3">
-                  <div class="h-4 w-14 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div>
-                </div>
-                <div class="sm:col-span-9">
-                  <div class="h-10 w-full rounded-xl bg-slate-200/60 dark:bg-white/5 animate-pulse"></div>
-                  <div class="mt-2 h-3 w-56 rounded-md bg-slate-200/50 dark:bg-white/10 animate-pulse"></div>
-                </div>
-              </div>
+            <div>
+              <label for="email" class="block text-sm font-medium text-slate-900 dark:text-slate-200 mb-2">Email Address</label>
+              <input id="email" type="email" value={formData.email} readonly disabled
+                class="block w-full rounded-xl bg-slate-100/70 dark:bg-slate-950/70 px-3 py-2 text-slate-500 dark:text-slate-400 cursor-not-allowed outline-none" />
+              <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">Email hanya ditampilkan dan tidak bisa diubah.</p>
             </div>
-            <div class="mt-6 flex items-center justify-end gap-3">
-              <div class="h-9 w-16 rounded-xl bg-slate-200/70 dark:bg-white/5 animate-pulse"></div>
-              <div class="h-9 w-20 rounded-xl bg-slate-200/70 dark:bg-white/5 animate-pulse"></div>
-            </div>
-          </section>
-        {:else}
-          <!-- ======= KONTEN PROFILE ======= -->
-          <section class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur p-5 sm:p-6 lg:p-8 shadow-sm">
-            <div class="border-b border-black/5 dark:border-white/10 pb-6 mb-6">
-              <h2 class="text-lg sm:text-xl font-semibold text-slate-900 dark:text-slate-100">Profile</h2>
-              <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Kelola informasi data profile kamu.</p>
-            </div>
+          </div>
 
-            <div class="space-y-5">
-              <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-6 items-start">
-                <label for="name" class="sm:col-span-3 text-sm font-medium text-slate-900 dark:text-slate-300">Name</label>
-                <div class="sm:col-span-9">
-                  <input
-                    id="name"
-                    type="text"
-                    bind:value={formData.name}
-                    autocomplete="name"
-                    class="block w-full rounded-xl bg-white dark:bg-[#0f0d1b] px-3 py-2
-                          text-slate-900 dark:text-slate-100 -outline-offset-1
-                          outline-slate-200/80 dark:outline-white/10 placeholder:text-slate-400
-                          focus:outline-2 focus:-outline-offset-2 focus:outline-violet-600 disabled:opacity-60"
-                    disabled={disabled || loading || saving}
-                  />
-                </div>
-              </div>
-
-              <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-6 items-center">
-                <label for="email" class="sm:col-span-3 text-sm font-medium text-slate-900 dark:text-slate-300">Email</label>
-                <div class="sm:col-span-9">
-                  <input
-                    id="email"
-                    type="email"
-                    bind:value={formData.email}
-                    readonly
-                    autocomplete="email"
-                    class="block w-full rounded-xl bg-slate-100/70 dark:bg-slate-950/70 px-3 py-2
-                          text-slate-700 dark:text-slate-300 -outline-offset-1
-                          outline-slate-200/80 dark:outline-white/10 cursor-not-allowed"
-                  />
-                  <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">Email hanya ditampilkan dan tidak bisa diubah.</p>
-                </div>
-              </div>
-            </div>
-            <!-- Actions -->
-            <div class="mt-6 flex items-center justify-end gap-3">
-              <button type="button" on:click={handleCancel}
-                      class="text-sm font-semibold text-slate-900 dark:text-slate-200">Reset</button>
-              <button type="submit"
-                      class="rounded-xl bg-violet-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-violet-500
-                            focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600 disabled:opacity-60"
-                      disabled={saving || loading || !isDirty}>
-                {saving ? 'Saving…' : 'Save'}
-              </button>
-            </div>
-          </section>
-        {/if}
+          <div class="mt-6 flex justify-end gap-3">
+            <button type="button" on:click={handleCancelProfile}
+              class="text-sm font-semibold text-slate-900 dark:text-slate-200 px-3 py-2">Reset</button>
+            <button type="submit" disabled={saving || !isDirtyProfile}
+              class="rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-violet-500 disabled:opacity-50 transition-all">
+              {saving ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </section>
       </form>
     </div>
   {/if}
-
 
   <!-- ===================== KEAMANAN (PASSWORD) ===================== -->
   {#if activeTab === 'keamanan'}
@@ -445,6 +656,271 @@
           </div>
         </section>
       {/if}
+    </div>
+  {/if}
+
+  <!-- ===================== TAB: ROLE (NEW DESIGN) ===================== -->
+  {#if activeTab === 'role' && canManageRoles}
+    <div id="panel-role" role="tabpanel">
+      <form on:submit|preventDefault={handleSubmitRole}>
+        {#if loading}
+          <!-- ROLE SKELETON -->
+          <section class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur p-6 shadow-sm animate-pulse">
+            <div class="h-6 w-32 bg-slate-200 dark:bg-white/10 rounded mb-6"></div>
+            <div class="h-10 w-full bg-slate-200 dark:bg-white/10 rounded-xl mb-8"></div>
+            <div class="grid grid-cols-3 gap-4 mb-8">
+              <div class="h-24 bg-slate-200 dark:bg-white/10 rounded-xl"></div>
+              <div class="h-24 bg-slate-200 dark:bg-white/10 rounded-xl"></div>
+              <div class="h-24 bg-slate-200 dark:bg-white/10 rounded-xl"></div>
+            </div>
+          </section>
+        {:else}
+          <section
+            class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur p-5 sm:p-6 lg:p-8 shadow-sm"
+          >
+            <!-- Header Section -->
+            <div class="border-b border-black/5 dark:border-white/10 pb-6 mb-6">
+              <h2 class="text-lg sm:text-xl font-semibold text-slate-900 dark:text-slate-100">Role Management</h2>
+              <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                Atur role dan permission detail (view, create, update, delete) untuk setiap modul.
+              </p>
+            </div>
+
+            <!-- 1. Select User -->
+            <div class="mb-8">
+              <label
+                for="selectUser"
+                class="block text-sm font-medium text-slate-900 dark:text-slate-200 mb-2"
+              >
+                Pilih User Target
+              </label>
+              <div class="relative">
+                <select
+                  id="selectUser"
+                  bind:value={roleData.userId}
+                  on:change={(e) => {
+                    const uid = Number((e.currentTarget as HTMLSelectElement).value);
+                    const u = users.find((x) => x.id === uid) ?? null;
+                    applyUserRole(u);
+                  }}
+                  disabled={loading || savingRole}
+                  class="block w-full appearance-none rounded-xl bg-white dark:bg-[#0f0d1b] pl-4 pr-10 py-2 
+                         text-slate-900 dark:text-slate-100 outline-slate-200/80 dark:outline-white/10 
+                         focus:outline-2 focus:outline-violet-600 shadow-sm transition-all cursor-pointer"
+                >
+                  {#if users.length === 0}
+                    <option value="">Tidak ada data user</option>
+                  {:else}
+                    {#each users as u}
+                      <option value={String(u.id)}>{u.name} — {u.email}</option>
+                    {/each}
+                  {/if}
+                </select>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
+                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+              <!-- 2. Role Selection (Radio Cards) -->
+              <div>
+                <span class="block text-sm font-medium text-slate-900 dark:text-slate-200 mb-3">
+                  Tipe Akun (Role)
+                </span>
+                <div class="space-y-3">
+                  {#each ['user', 'staff', 'admin'] as rOption}
+                    <label
+                      class="relative flex items-center p-3 rounded-xl border transition-all cursor-pointer
+                        {roleData.selectedRole === rOption 
+                          ? 'bg-violet-50/50 border-violet-500 dark:bg-violet-900/20 dark:border-violet-400' 
+                          : 'bg-white dark:bg-[#0f0d1b] border-slate-200 dark:border-white/10 hover:border-violet-300'}
+                        {(currentIsOnlyAdmin && selectedUserIsSuperAdmin) ? 'opacity-50 cursor-not-allowed' : ''}"
+                    >
+                      <input
+                        type="radio"
+                        name="roleGroup"
+                        value={rOption}
+                        bind:group={roleData.selectedRole}
+                        disabled={currentIsOnlyAdmin && selectedUserIsSuperAdmin}
+                        class="sr-only"
+                      />
+                      <div
+                        class="flex items-center justify-center h-5 w-5 rounded-full border border-slate-300 dark:border-slate-600 mr-3
+                               {roleData.selectedRole === rOption ? 'border-violet-600 bg-violet-600' : ''}"
+                      >
+                        {#if roleData.selectedRole === rOption}
+                          <div class="h-2 w-2 rounded-full bg-white"></div>
+                        {/if}
+                      </div>
+                      <div>
+                        <span
+                          class="block text-sm font-semibold capitalize text-slate-900 dark:text-slate-100"
+                        >
+                          {rOption}
+                        </span>
+                        <span class="block text-xs text-slate-500 dark:text-slate-400">
+                          {rOption === 'admin'
+                            ? 'Akses penuh sistem'
+                            : rOption === 'staff'
+                            ? 'Manajemen operasional (dapat dikustom)'
+                            : 'Akses pengguna standar (dapat dikustom)'}
+                        </span>
+                      </div>
+                    </label>
+                  {/each}
+                </div>
+              </div>
+
+              <!-- 3. Permissions (Modules + sub-actions) -->
+              <div>
+                <span class="block text-sm font-medium text-slate-900 dark:text-slate-200 mb-3">
+                  Hak Akses per Modul
+                </span>
+
+                <div
+                  class="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 p-4 space-y-3"
+                >
+                  {#each MODULE_CONFIG as mod}
+                    <div class="rounded-lg border border-slate-200/80 dark:border-white/10 bg-white/70 dark:bg-[#0f0d1b]">
+                      <!-- header modul -->
+                      <div class="flex items-center justify-between px-3 py-2">
+                        <div class="flex items-center gap-3">
+                          <!-- master checkbox -->
+                          <input
+                            type="checkbox"
+                            class="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-600 dark:bg-neutral-800 dark:border-neutral-600"
+                            checked={moduleAllChecked(mod.key)}
+                            on:change={(e) =>
+                              toggleModuleAll(
+                                mod.key,
+                                (e.currentTarget as HTMLInputElement).checked
+                              )}
+                            disabled={loading || savingRole}
+                          />
+                          <div>
+                            <div
+                              class="text-sm font-semibold text-slate-900 dark:text-slate-100"
+                            >
+                              {mod.label}
+                            </div>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">
+                              {mod.desc}
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          class="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                          on:click={() =>
+                            (expandedModules = {
+                              ...expandedModules,
+                              [mod.key]: !expandedModules[mod.key]
+                            })}
+                        >
+                          Detail
+                          <svg
+                            class="h-3 w-3 transition-transform"
+                            viewBox="0 0 20 20"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.8"
+                            class:rotate-90={expandedModules[mod.key]}
+                          >
+                            <path
+                              d="M7 5l6 5-6 5"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+
+                      <!-- sub-permission -->
+                      {#if expandedModules[mod.key]}
+                        <div class="border-t border-slate-200/80 dark:border-white/10 px-3 py-2">
+                          <div class="grid grid-cols-2 gap-x-4 gap-y-2">
+                            {#each ACTION_KEYS as actionKey}
+                              <label class="inline-flex items-center gap-2 text-xs text-slate-700 dark:text-slate-200">
+                                <input
+                                  type="checkbox"
+                                  class="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-600 dark:bg-neutral-800 dark:border-neutral-600"
+                                  checked={roleData.modules[mod.key][actionKey]}
+                                  on:change={(e) =>
+                                    handleToggleAction(
+                                      mod.key,
+                                      actionKey,
+                                      (e.currentTarget as HTMLInputElement).checked
+                                    )}
+                                  disabled={loading || savingRole}
+                                />
+                                <span>{ACTION_LABELS[actionKey]}</span>
+                              </label>
+                            {/each}
+                          </div>
+                        </div>
+                      {/if}
+                    </div>
+                  {/each}
+                </div>
+              </div>
+            </div>
+
+            <!-- Footer Actions -->
+            <div
+              class="mt-8 pt-6 border-t border-black/5 dark:border-white/10 flex items-center justify-end gap-3"
+            >
+              <button
+                type="button"
+                on:click={handleResetRole}
+                disabled={!roleDirty || savingRole}
+                class="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white transition disabled:opacity-50"
+              >
+                Batalkan
+              </button>
+              <button
+                type="submit"
+                disabled={
+                  !roleDirty ||
+                  savingRole ||
+                  !roleData.userId ||
+                  (currentIsOnlyAdmin && selectedUserIsSuperAdmin)
+                }
+                class="flex items-center gap-2 rounded-xl bg-violet-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-violet-500 
+                       focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+              >
+                {#if savingRole}
+                  <svg
+                    class="animate-spin h-4 w-4 text-white"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      class="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      stroke-width="4"
+                    ></circle>
+                    <path
+                      class="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  Saving...
+                {:else}
+                  Simpan Perubahan
+                {/if}
+              </button>
+            </div>
+          </section>
+        {/if}
+      </form>
     </div>
   {/if}
 </div>
