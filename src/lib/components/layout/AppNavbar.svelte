@@ -1,22 +1,24 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import ThemeToggle from './ThemeToggle.svelte';
   import { apiFetch, getToken, setToken } from '$lib/api';
   import { fly, fade } from 'svelte/transition';
   import { currentUser, setUser } from '$lib/stores/user';
+  import { userPermissions } from '$lib/stores/permissions';
   import { get } from 'svelte/store';
   import ConfirmDialog from '../ConfirmDialog.svelte';
 
-  type Link = { name: string; href: string };
+  type Link = { name: string; href: string; perm?: string };
+
   const links: Link[] = [
-    { name: 'Dashboard',           href: '/dashboard' },
-    { name: 'Project',             href: '/projects' },
-    // { name: 'Activity',            href: '/activities' },
-    { name: 'Mitra',               href: '/mitras' },
-    // { name: 'Barang Sertifikat',   href: '/barang-certificates' },
-    // { name: 'Sertifikat',          href: '/certificates' }
+    { name: 'Dashboard', href: '/dashboard' },
+    { name: 'Project', href: '/projects', perm: 'project-view' },
+    { name: 'Activity', href: '/activities', perm: 'activity-view' },
+    { name: 'Mitra', href: '/mitras', perm: 'mitra-view' },
+    { name: 'Barang Sertifikat', href: '/barang-certificates', perm: 'bc-view' },
+    { name: 'Sertifikat', href: '/certificates', perm: 'certificate-view' }
   ];
 
   let navEl: HTMLElement;
@@ -24,7 +26,7 @@
   let rightEl: HTMLDivElement;
   let logoEl: HTMLAnchorElement;
 
-  let visible: Link[] = [...links];
+  let visible: Link[] = [];
   let overflow: Link[] = [];
   let showMore = false;
   let showProfile = false;
@@ -37,16 +39,34 @@
     return current === href || current.startsWith(href + '/');
   }
 
+  // Reactive allowed links based on store
+  // Use $userPermissions shorthand so Svelte tracks changes
+  $: sourceLinks = links.filter(l => {
+    if (!l.perm) return true;
+    return $userPermissions?.includes(l.perm);
+  });
+
+  // When allowed links change, schedule recalc after DOM updates
+  // We use explicit subscription below as well for reliability on hard refresh.
+  $: if (typeof window !== 'undefined' && navEl) {
+    // small tick so bound nodes have layout settled
+    tick().then(() => recalc());
+  }
+
+  // recalc: measure and split visible / overflow using sourceLinks
   function recalc() {
     if (!navEl || !leftEl || !rightEl || !logoEl) return;
+
     if (window.innerWidth < 768) {
-      visible = [...links];
+      visible = [...sourceLinks];
       overflow = [];
       return;
     }
 
-    visible = [...links];
+    const measurableLinks = [...sourceLinks];
+    visible = [...measurableLinks];
     overflow = [];
+
     const containerWidth = navEl.clientWidth;
     const rightWidth = rightEl.clientWidth;
     const logoWidth = logoEl.clientWidth;
@@ -62,7 +82,7 @@
     measurer.className = 'absolute -z-10 opacity-0 pointer-events-none flex gap-2';
     document.body.appendChild(measurer);
 
-    for (const l of links) {
+    for (const l of measurableLinks) {
       const b = document.createElement('button');
       b.className = 'px-3 py-2 text-sm font-medium rounded-xl';
       b.textContent = l.name;
@@ -108,7 +128,6 @@
     }
   }
 
-  // === kunci scroll saat mobile menu terbuka ===
   function lockBodyScroll(lock: boolean) {
     const body = document.body;
     if (!body) return;
@@ -136,6 +155,7 @@
   $: lockBodyScroll(showMobile);
 
   function onResize() {
+    // small throttle guard not needed here; recalc is cheap
     recalc();
     if (window.innerWidth >= 768 && showMobile) showMobile = false;
   }
@@ -149,12 +169,20 @@
           if (me?.name || me?.email) setUser({ name: me.name ?? '', email: me.email ?? '' });
         }
       } catch (e) {
-        // abaikan error (mis. belum login/expired), dropdown tetap tampil
+        // ignore errors
       }
     })();
 
-    const ro = new ResizeObserver(recalc);
+    // observe nav bound changes (use ResizeObserver to trigger recalc)
+    const ro = new ResizeObserver(() => recalc());
     if (navEl) ro.observe(navEl);
+
+    // ensure we recalc after initial DOM paint + after any permission load
+    // subscription: when permissions change, wait tick() then recalc
+    const unsubPerm = (userPermissions as any).subscribe(async () => {
+      await tick(); // wait DOM updates / bindings
+      recalc();
+    });
 
     const outsideClick = () => { showMore = false; showProfile = false; };
     document.addEventListener('click', outsideClick);
@@ -164,10 +192,12 @@
       if (e.key === 'Escape' && showMobile) showMobile = false;
     });
 
-    recalc();
+    // small initial delay to allow bindings (logoEl etc.) to be present
+    setTimeout(() => recalc(), 50);
 
     return () => {
       ro.disconnect();
+      unsubPerm();
       document.removeEventListener('click', outsideClick);
       window.removeEventListener('resize', onResize);
       lockBodyScroll(false);
@@ -181,18 +211,15 @@
   }
 </script>
 
-<!-- Top bar -->
 <div bind:this={navEl} class="sticky top-0 z-50" role="banner">
   <div class="backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:supports-[backdrop-filter]:bg-[#0b0617]/70 bg-white/90 dark:bg-[#0b0617]/90 border-b border-black/5 dark:border-white/10">
     <nav class="mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex h-[64px] items-center justify-between gap-2">
-        <!-- Left block: logo + links (desktop) -->
         <div class="flex items-center gap-3 min-w-0" bind:this={leftEl}>
           <a bind:this={logoEl} href="/" class="shrink-0 select-none font-semibold tracking-wide text-violet-700 dark:text-violet-300">
             INDOGREEN <span class="text-xs text-violet-700 dark:text-violet-300">V2</span>
           </a>
 
-          <!-- Desktop links -->
           <div class="hidden md:flex items-center gap-1">
             {#each visible as l (l.href)}
               <button
@@ -205,7 +232,6 @@
                       {isActive(l.href, $page.url.pathname) ? 'bg-violet-500/15 dark:bg-violet-400/15' : ''}">
                 {l.name}
               </button>
-
             {/each}
 
             {#if overflow.length}
@@ -235,11 +261,9 @@
           </div>
         </div>
 
-        <!-- Right block: theme, profile, hamburger -->
         <div class="flex items-center gap-2" bind:this={rightEl}>
           <ThemeToggle />
 
-          <!-- Profile dropdown -->
           <div class="relative">
             <button
               type="button"
@@ -253,11 +277,13 @@
             </button>
 
             {#if showProfile}
-              <!-- svelte-ignore a11y_click_events_have_key_events -->
-              <!-- svelte-ignore a11y_no_static_element_interactions -->
-              <div class="absolute right-0 mt-2 w-64 rounded-2xl border border-black/5 dark:border-white/10 bg-white dark:bg-[#12101d] shadow-xl p-2"
-                  on:click|stopPropagation>
-                <!-- User header -->
+              <div 
+                  class="absolute right-0 mt-2 w-64 rounded-2xl border border-black/5 dark:border-white/10 bg-white dark:bg-[#12101d] shadow-xl p-2"
+                  role="menu"
+                  tabindex="-1"
+                  on:click|stopPropagation
+                  on:keydown={() => {}}
+              >
                 <div class="px-3 py-3 mb-1 rounded-xl bg-slate-50 dark:bg-white/5 border border-black/5 dark:border-white/10">
                   <div class="flex items-center gap-3 min-w-0">
                     <div class="h-9 w-9 rounded-full bg-violet-600/20 text-violet-700 dark:text-violet-300 flex items-center justify-center">
@@ -275,7 +301,6 @@
                     </div>
                   </div>
                 </div>
-                <!-- Actions -->
                 <button
                   type="button"
                   on:click={() => go('/settings')}
@@ -293,7 +318,6 @@
 
           </div>
 
-          <!-- Hamburger (mobile only) -->
           <button
             type="button"
             class="md:hidden inline-flex items-center justify-center h-10 w-10 rounded-xl border border-black/5 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5"
@@ -309,10 +333,8 @@
     </nav>
   </div>
 
-  <!-- Mobile sheet -->
   {#if showMobile}
     <div class="fixed inset-0 z-50" aria-modal="true" role="dialog" id="mobile-menu">
-      <!-- backdrop -->
       <button
         type="button"
         aria-label="Close menu"
@@ -321,12 +343,10 @@
         transition:fade={{ duration: 120 }}
       ></button>
 
-      <!-- panel -->
       <div
         class="absolute left-0 top-0 h-full w-full bg-white/90 dark:bg-[#0e0c19]/90 backdrop-blur border-r border-black/5 dark:border-white/10 shadow-2xl overflow-y-auto overscroll-contain"
         transition:fly={{ x: -360, duration: 220, opacity: 0.2 }}
       >
-        <!-- header: dibuat lebih masuk & centered -->
         <div class="flex items-center justify-between px-5 sm:px-6 py-4">
           <span class="font-semibold tracking-wide text-violet-700 dark:text-violet-300">INDOGREEN</span>
           <button
@@ -344,9 +364,8 @@
           <ThemeToggle fullWidth />
         </div>
 
-        <!-- list menu mobile: ada indikator bar di kiri untuk halaman aktif -->
         <div class="px-4 space-y-1">
-          {#each links as l (l.href)}
+          {#each sourceLinks as l (l.href)}
             {#key $page.url.pathname}
               <button
                 type="button"

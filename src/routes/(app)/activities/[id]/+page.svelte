@@ -5,6 +5,7 @@
   import { apiFetch, getToken } from '$lib/api';
   import ActivityDetail from '$lib/components/detail/ActivityDetail.svelte';
   import ActivityFormModal from '$lib/components/form/ActivityFormModal.svelte';
+  import { userPermissions } from '$lib/stores/permissions';
 
   let activityId: string | null = null;
   let activity: any = null;
@@ -15,6 +16,16 @@
   let customers: any[] = [];
   let activityKategoriList: string[] = [];
   let activityJenisList: string[] = [];
+
+  // permissions
+  let canUpdateActivity = false;
+  let canDeleteActivity = false;
+
+  $: {
+    const perms = $userPermissions ?? [];
+    canUpdateActivity = perms.includes('activity-update');
+    canDeleteActivity = perms.includes('activity-delete');
+  }
 
   // ui state
   let loading = true;
@@ -184,10 +195,20 @@
     }
   }
 
-  function openEditModal() { showEditModal = true; }
+  function openEditModal() {
+    if (!canUpdateActivity) {
+      console.warn('Blocked: lacking activity-update permission');
+      return;
+    }
+    showEditModal = true;
+  }
 
   async function handleSubmitUpdate() {
     if (!activity?.id) return;
+    if (!canUpdateActivity) {
+      console.warn('Blocked: lacking activity-update permission (submit)');
+      return;
+    }
     try {
       const fd = buildFormDataForActivity();
       fd.append('_method', 'PUT');
@@ -204,6 +225,10 @@
 
   async function handleDelete() {
     if (!activity?.id) return;
+    if (!canDeleteActivity) {
+      console.warn('Blocked: lacking activity-delete permission');
+      return;
+    }
     if (!confirm('Apakah Anda yakin ingin menghapus aktivitas ini?')) return;
     try {
       await apiFetch(`/activities/${activity.id}`, { method: 'DELETE', auth: true });
@@ -319,10 +344,14 @@
         </div>
       </div>
       <div class="flex flex-col sm:flex-row gap-2 shrink-0">
-        <button on:click={openEditModal}
-          class="px-4 h-9 rounded-md text-sm font-semibold text-white bg-violet-600 hover:bg-violet-700">Edit</button>
-        <button on:click={handleDelete}
-          class="px-4 h-9 rounded-md text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700">Hapus</button>
+        {#if canUpdateActivity}
+          <button on:click={openEditModal}
+            class="px-4 h-9 rounded-md text-sm font-semibold text-white bg-violet-600 hover:bg-violet-700">Edit</button>
+        {/if}
+        {#if canDeleteActivity}
+          <button on:click={handleDelete}
+            class="px-4 h-9 rounded-md text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700">Hapus</button>
+        {/if}
       </div>
     </div>
 

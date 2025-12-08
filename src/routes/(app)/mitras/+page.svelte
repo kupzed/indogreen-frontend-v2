@@ -10,6 +10,7 @@
 
   import MitraFilterDesktop from '$lib/components/filters/MitraFilterDesktop.svelte';
   import MitraFilterMobile from '$lib/components/filters/MitraFilterMobile.svelte';
+  import { userPermissions } from '$lib/stores/permissions';
 
   // ====== DATA ======
   let mitras: any[] = [];
@@ -20,6 +21,18 @@
   let search = '';
   let kategoriFilter = '';
   let sortDir: 'desc' | 'asc' = 'desc'; // ⬅️ NEW
+
+  // ====== PERMISSIONS ======
+  let canCreateMitra = false;
+  let canUpdateMitra = false;
+  let canDeleteMitra = false;
+
+  $: {
+    const perms = $userPermissions ?? [];
+    canCreateMitra = perms.includes('mitra-create');
+    canUpdateMitra = perms.includes('mitra-update');
+    canDeleteMitra = perms.includes('mitra-delete');
+  }
 
   // ====== UI STATE ======
   // view toggle
@@ -161,11 +174,28 @@
 
   function goToPage(page: number) { if (page > 0 && page <= lastPage) { currentPage = page; fetchMitras(); } }
 
-  function openCreateModal() { form = { ...form, nama:'', is_pribadi:false, is_perusahaan:false, is_customer:false, is_vendor:false, alamat:'', website:'', email:'', kontak_1:'', kontak_1_nama:'', kontak_1_jabatan:'', kontak_2:'', kontak_2_nama:'', kontak_2_jabatan:'' }; showCreateModal = true; }
-  function openEditModal(mitra: any) { editingMitra = { ...mitra }; form = { ...editingMitra }; showEditModal = true; }
+  function openCreateModal() {
+    if (!canCreateMitra) {
+      console.warn('Blocked: lacking mitra-create permission');
+      return;
+    }
+    form = { ...form, nama:'', is_pribadi:false, is_perusahaan:false, is_customer:false, is_vendor:false, alamat:'', website:'', email:'', kontak_1:'', kontak_1_nama:'', kontak_1_jabatan:'', kontak_2:'', kontak_2_nama:'', kontak_2_jabatan:'' };
+    showCreateModal = true;
+  }
+  function openEditModal(mitra: any) {
+    if (!canUpdateMitra) {
+      console.warn('Blocked: lacking mitra-update permission');
+      return;
+    }
+    editingMitra = { ...mitra }; form = { ...editingMitra }; showEditModal = true;
+  }
   function openDetailDrawer(mitra: any) { selectedMitra = { ...mitra }; showDetailDrawer = true; }
 
   async function handleSubmitCreate() {
+    if (!canCreateMitra) {
+      console.warn('Blocked: lacking mitra-create permission (submit)');
+      return;
+    }
     try {
       await apiFetch('/mitras', { method: 'POST', body: form, auth: true });
       alert('Mitra berhasil ditambahkan!');
@@ -176,6 +206,10 @@
   }
   async function handleSubmitUpdate() {
     if (!editingMitra?.id) return;
+    if (!canUpdateMitra) {
+      console.warn('Blocked: lacking mitra-update permission (submit)');
+      return;
+    }
     try {
       await apiFetch(`/mitras/${editingMitra.id}`, { method: 'PUT', body: form, auth: true });
       alert('Mitra berhasil diperbarui!');
@@ -185,6 +219,10 @@
     }
   }
   async function handleDelete(mitraId: number) {
+    if (!canDeleteMitra) {
+      console.warn('Blocked: lacking mitra-delete permission');
+      return;
+    }
     if (!confirm('Apakah Anda yakin ingin menghapus mitra ini?')) return;
     try {
       await apiFetch(`/mitras/${mitraId}`, { method: 'DELETE', auth: true });
@@ -297,12 +335,14 @@
             <input type="text" placeholder="Cari mitra..." bind:value={search} on:input={handleFilterOrSearch}
               class="block w-full pl-10 pr-3 h-9 rounded-md text-sm border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur text-slate-800 placeholder-slate-500 dark:text-slate-100 dark:placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-violet-500" />
           </div>
-          <button
-            on:click={openCreateModal}
-            class="h-9 w-9 bg-violet-600 hover:bg-violet-700 text-white rounded-md shadow-sm transition-all duration-200 hover:scale-105 active:scale-95 grid place-items-center shrink-0"
-            aria-label="Tambah Mitra" title="Tambah Mitra">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-          </button>
+          {#if canCreateMitra}
+            <button
+              on:click={openCreateModal}
+              class="h-9 w-9 bg-violet-600 hover:bg-violet-700 text-white rounded-md shadow-sm transition-all duration-200 hover:scale-105 active:scale-95 grid place-items-center shrink-0"
+              aria-label="Tambah Mitra" title="Tambah Mitra">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+            </button>
+          {/if}
         </div>
       </div>
 
@@ -449,8 +489,12 @@
 
                   <div class="flex justify-end px-4 py-2 sm:px-6 gap-2">
                     <button on:click|stopPropagation={() => openDetailDrawer(m)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700">Detail</button>
-                    <button on:click|stopPropagation={() => openEditModal(m)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700">Edit</button>
-                    <button on:click|stopPropagation={() => handleDelete(m.id)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700">Hapus</button>
+                    {#if canUpdateMitra}
+                      <button on:click|stopPropagation={() => openEditModal(m)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700">Edit</button>
+                    {/if}
+                    {#if canDeleteMitra}
+                      <button on:click|stopPropagation={() => handleDelete(m.id)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700">Hapus</button>
+                    {/if}
                   </div>
                 </li>
               {/each}
@@ -514,7 +558,7 @@
                             <span class="sr-only">Edit, {m.nama}</span>
                           </button>
                           <button on:click|stopPropagation={() => handleDelete(m.id)} title="Delete" class="text-rose-600 hover:text-rose-700">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"/></svg>
                             <span class="sr-only">Hapus, {m.nama}</span>
                           </button>
                         </div>

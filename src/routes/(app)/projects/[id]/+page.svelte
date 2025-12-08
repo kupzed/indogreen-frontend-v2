@@ -17,9 +17,32 @@
   import ActivityFilterMobile  from '$lib/components/filters/ActivityFilterMobile.svelte';
   import CertificateFilterDesktop from '$lib/components/filters/CertificateFilterDesktop.svelte';
   import CertificateFilterMobile  from '$lib/components/filters/CertificateFilterMobile.svelte';
+  import { userPermissions } from '$lib/stores/permissions';
 
   let projectId: string | any = null;
   let project: any = null;
+
+  // ===== Permissions =====
+  let canUpdateProject = false;
+  let canDeleteProject = false;
+  let canCreateActivity = false;
+  let canUpdateActivity = false;
+  let canDeleteActivity = false;
+  let canCreateCertificate = false;
+  let canUpdateCertificate = false;
+  let canDeleteCertificate = false;
+
+  $: {
+    const perms = $userPermissions ?? [];
+    canUpdateProject = perms.includes('project-update');
+    canDeleteProject = perms.includes('project-delete');
+    canCreateActivity = perms.includes('activity-create');
+    canUpdateActivity = perms.includes('activity-update');
+    canDeleteActivity = perms.includes('activity-delete');
+    canCreateCertificate = perms.includes('certificate-create');
+    canUpdateCertificate = perms.includes('certificate-update');
+    canDeleteCertificate = perms.includes('certificate-delete');
+  }
 
   // Activities
   let activities: any[] = [];
@@ -384,6 +407,10 @@
   let editActivityFileName = '';
 
   function openCreateActivityModal() {
+    if (!canCreateActivity) {
+      console.warn('Blocked: lacking activity-create permission');
+      return;
+    }
     createActivityForm = {
       name: '', short_desc: '', description: '', project_id: project.id,
       kategori: '', activity_date: '', attachment: null,
@@ -395,6 +422,10 @@
     showCreateActivityModal = true;
   }
   function openEditActivityModal(activity: any) {
+    if (!canUpdateActivity) {
+      console.warn('Blocked: lacking activity-update permission');
+      return;
+    }
     editingActivity = { ...activity };
     editActivityForm = {
       name: activity?.name ?? '',
@@ -507,6 +538,10 @@
   }
 
   async function handleSubmitCreateActivity() {
+    if (!canCreateActivity) {
+      console.warn('Blocked: lacking activity-create permission (submit)');
+      return;
+    }
     try {
       const fd = buildFormDataForActivity(createActivityForm as any);
       await apiFetch('/activities', { method: 'POST', body: fd, auth: true });
@@ -520,6 +555,10 @@
 
   async function handleSubmitUpdateActivity() {
     if (!editingActivity?.id) return;
+    if (!canUpdateActivity) {
+      console.warn('Blocked: lacking activity-update permission (submit)');
+      return;
+    }
     try {
       const fd = buildFormDataForActivity(editActivityForm as any);
       fd.append('_method', 'PUT');
@@ -533,6 +572,10 @@
   }
 
   async function handleDeleteActivity(activityId: number) {
+    if (!canDeleteActivity) {
+      console.warn('Blocked: lacking activity-delete permission');
+      return;
+    }
     if (!confirm('Apakah Anda yakin ingin menghapus aktivitas ini?')) return;
     try {
       await apiFetch(`/activities/${activityId}`, { method: 'DELETE', auth: true });
@@ -720,6 +763,10 @@
   let certificatePerPage = 50;
 
   function openCreateCertificateModal() {
+    if (!canCreateCertificate) {
+      console.warn('Blocked: lacking certificate-create permission');
+      return;
+    }
     certificateForm = {
       name: '', no_certificate: '', project_id: project?.id ?? '',
       barang_certificate_id: '', status: '',
@@ -734,6 +781,10 @@
   }
 
   function openEditCertificateModal(item: ProjectCertificate) {
+    if (!canUpdateCertificate) {
+      console.warn('Blocked: lacking certificate-update permission');
+      return;
+    }
     editingCertificate = { ...item };
     certificateForm = {
       name: item?.name ?? '',
@@ -797,6 +848,10 @@
 
 
   async function handleSubmitCreateCertificate() {
+    if (!canCreateCertificate) {
+      console.warn('Blocked: lacking certificate-create permission (submit)');
+      return;
+    }
     try {
       const fd = buildCertificateFormData();
       await apiFetch('/certificates', { method: 'POST', body: fd, auth: true });
@@ -810,6 +865,10 @@
 
   async function handleSubmitUpdateCertificate() {
     if (!editingCertificate?.id) return;
+    if (!canUpdateCertificate) {
+      console.warn('Blocked: lacking certificate-update permission (submit)');
+      return;
+    }
     try {
       const fd = buildCertificateFormData();
       fd.append('_method', 'PUT');
@@ -823,6 +882,10 @@
   }
 
   async function handleDeleteCertificate(id: number) {
+    if (!canDeleteCertificate) {
+      console.warn('Blocked: lacking certificate-delete permission');
+      return;
+    }
     if (!confirm('Yakin ingin menghapus certificate ini?')) return;
     try {
       await apiFetch(`/certificates/${id}`, { method: 'DELETE', auth: true });
@@ -932,10 +995,14 @@
               </div>
             </div>
             <div class="flex flex-col sm:flex-row gap-2 shrink-0">
-              <button on:click={openEditProjectModal}
-                class="px-4 h-9 rounded-md text-sm font-semibold text-white bg-violet-600 hover:bg-violet-700 shadow-sm">Edit Project</button>
-              <button on:click={handleDeleteProject}
-                class="px-4 h-9 rounded-md text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 shadow-sm">Hapus Project</button>
+              {#if canUpdateProject}
+                <button on:click={openEditProjectModal}
+                  class="px-4 h-9 rounded-md text-sm font-semibold text-white bg-violet-600 hover:bg-violet-700 shadow-sm">Edit Project</button>
+              {/if}
+              {#if canDeleteProject}
+                <button on:click={handleDeleteProject}
+                  class="px-4 h-9 rounded-md text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 shadow-sm">Hapus Project</button>
+              {/if}
             </div>
           </div>
         </div>
@@ -1074,18 +1141,20 @@
                   <div class="flex items-center gap-2 flex-1 min-w-0">
                     <div class="relative flex-1 min-w-0">
                       <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <svg class="h-5 w-5 text-slate-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clip-rule="evenodd" /></svg>
+                        <svg class="h-5 w-5 text-slate-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clip-rule="evenodd"/></svg>
                       </div>
                       <input type="text" placeholder="Cari aktivitas..." bind:value={activitySearch} on:input={handleActivityFilterOrSearch}
                         class="block w-full pl-10 pr-3 h-9 rounded-md text-sm border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 placeholder-slate-500 dark:placeholder-slate-400" />
                     </div>
-                    <button on:click={openCreateActivityModal}
-                      class="h-9 w-9 bg-violet-600 hover:bg-violet-700 text-white rounded-md shadow-sm transition-all duration-200 hover:scale-105 active:scale-95 grid place-items-center shrink-0"
-                      aria-label="Tambah Project" title="Tambah Project">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                      </svg>
-                    </button>
+                    {#if canCreateActivity}
+                      <button on:click={openCreateActivityModal}
+                        class="h-9 w-9 bg-violet-600 hover:bg-violet-700 text-white rounded-md shadow-sm transition-all duration-200 hover:scale-105 active:scale-95 grid place-items-center shrink-0"
+                        aria-label="Tambah Project" title="Tambah Project">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                      </button>
+                    {/if}
                   </div>
                 </div>
 
@@ -1237,8 +1306,12 @@
                             </a>
                             <div class="flex justify-end px-4 py-2 sm:px-6 gap-2">
                               <button on:click|stopPropagation={() => openActivityDetailDrawer(activity)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700">Detail</button>
-                              <button on:click|stopPropagation={() => openEditActivityModal(activity)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700">Edit</button>
-                              <button on:click|stopPropagation={() => handleDeleteActivity(activity.id)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700">Hapus</button>
+                              {#if canUpdateActivity}
+                                <button on:click|stopPropagation={() => openEditActivityModal(activity)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700">Edit</button>
+                              {/if}
+                              {#if canDeleteActivity}
+                                <button on:click|stopPropagation={() => handleDeleteActivity(activity.id)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700">Hapus</button>
+                              {/if}
                             </div>
                           </li>
                         {/each}
@@ -1310,14 +1383,18 @@
                                       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                                       <span class="sr-only">Detail, {activity.name}</span>
                                     </button>
-                                    <button on:click|stopPropagation={() => openEditActivityModal(activity)} title="Edit" class="text-violet-700 hover:text-violet-800 dark:text-violet-300 dark:hover:text-violet-200">
-                                      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                                      <span class="sr-only">Edit, {activity.name}</span>
-                                    </button>
-                                    <button on:click|stopPropagation={() => handleDeleteActivity(activity.id)} title="Delete" class="text-rose-600 hover:text-rose-700">
-                                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"/></svg>
-                                      <span class="sr-only">Hapus, {activity.name}</span>
-                                    </button>
+                                    {#if canUpdateActivity}
+                                      <button on:click|stopPropagation={() => openEditActivityModal(activity)} title="Edit" class="text-violet-700 hover:text-violet-800 dark:text-violet-300 dark:hover:text-violet-200">
+                                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                        <span class="sr-only">Edit, {activity.name}</span>
+                                      </button>
+                                    {/if}
+                                    {#if canDeleteActivity}
+                                      <button on:click|stopPropagation={() => handleDeleteActivity(activity.id)} title="Delete" class="text-rose-600 hover:text-rose-700">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                                        <span class="sr-only">Hapus, {activity.name}</span>
+                                      </button>
+                                    {/if}
                                   </div>
                                 </td>
                               </tr>
@@ -1474,13 +1551,15 @@
                       <input type="text" placeholder="Cari sertifikat..." bind:value={certificateSearch} on:input={handleCertificateSearchChange}
                         class="block w-full pl-10 pr-3 h-9 rounded-md text-sm border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 placeholder-slate-500 dark:placeholder-slate-400" />
                     </div>
-                    <button on:click={openCreateCertificateModal}
-                      class="h-9 w-9 bg-violet-600 hover:bg-violet-700 text-white rounded-md shadow-sm transition-all duration-200 hover:scale-105 active:scale-95 grid place-items-center shrink-0"
-                      aria-label="Tambah Project" title="Tambah Project">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                      </svg>
-                    </button>
+                    {#if canCreateCertificate}
+                      <button on:click={openCreateCertificateModal}
+                        class="h-9 w-9 bg-violet-600 hover:bg-violet-700 text-white rounded-md shadow-sm transition-all duration-200 hover:scale-105 active:scale-95 grid place-items-center shrink-0"
+                        aria-label="Tambah Project" title="Tambah Project">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                      </button>
+                    {/if}
                   </div>
                 </div>
 
@@ -1625,8 +1704,12 @@
                             </a>
                             <div class="flex justify-end px-4 py-2 sm:px-6 gap-2">
                               <button on:click|stopPropagation={() => openCertificateDetailDrawer(item)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700">Detail</button>
-                              <button on:click|stopPropagation={() => openEditCertificateModal(item)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700">Edit</button>
-                              <button on:click|stopPropagation={() => handleDeleteCertificate(item.id)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700">Hapus</button>
+                              {#if canUpdateCertificate}
+                                <button on:click|stopPropagation={() => openEditCertificateModal(item)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700">Edit</button>
+                              {/if}
+                              {#if canDeleteCertificate}
+                                <button on:click|stopPropagation={() => handleDeleteCertificate(item.id)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700">Hapus</button>
+                              {/if}
                             </div>
                           </li>
                         {/each}
@@ -1697,14 +1780,18 @@
                                       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                                       <span class="sr-only">Detail, {item.name}</span>
                                     </button>
-                                    <button title="Edit" class="text-violet-700 hover:text-violet-800 dark:text-violet-300 dark:hover:text-violet-200" on:click={() => openEditCertificateModal(item)}>
-                                      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                                      <span class="sr-only">Edit, {item.name}</span>
-                                    </button>
-                                    <button title="Hapus" class="text-rose-600 hover:text-rose-700" on:click={() => handleDeleteCertificate(item.id)}>
-                                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"/></svg>
-                                      <span class="sr-only">Hapus, {item.name}</span>
-                                    </button>
+                                    {#if canUpdateCertificate}
+                                      <button title="Edit" class="text-violet-700 hover:text-violet-800 dark:text-violet-300 dark:hover:text-violet-200" on:click={() => openEditCertificateModal(item)}>
+                                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                        <span class="sr-only">Edit, {item.name}</span>
+                                      </button>
+                                    {/if}
+                                    {#if canDeleteCertificate}
+                                      <button title="Hapus" class="text-rose-600 hover:text-rose-700" on:click={() => handleDeleteCertificate(item.id)}>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                                        <span class="sr-only">Hapus, {item.name}</span>
+                                      </button>
+                                    {/if}
                                   </div>
                                 </td>
                               </tr>

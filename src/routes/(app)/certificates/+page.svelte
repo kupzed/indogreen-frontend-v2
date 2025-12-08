@@ -10,6 +10,7 @@
 
   import CertificateFilterDesktop from '$lib/components/filters/CertificateFilterDesktop.svelte';
   import CertificateFilterMobile from '$lib/components/filters/CertificateFilterMobile.svelte';
+  import { userPermissions } from '$lib/stores/permissions';
 
   // ===== Types =====
   type Option = { id: number; name?: string; nama?: string; title?: string; no_seri?: string };
@@ -30,6 +31,17 @@
   };
 
   const statusOptions = ['Belum', 'Tidak Aktif', 'Aktif'] as const;
+
+  // ===== PERMISSIONS =====
+  let canCreateCertificate = false;
+  let canUpdateCertificate = false;
+  let canDeleteCertificate = false;
+  $: {
+    const perms = $userPermissions ?? [];
+    canCreateCertificate = perms.includes('certificate-create');
+    canUpdateCertificate = perms.includes('certificate-update');
+    canDeleteCertificate = perms.includes('certificate-delete');
+  }
 
   // ===== Data =====
   let items: Certificate[] = [];
@@ -231,6 +243,10 @@
 
   // ===== Form & Drawer =====
   function openCreateModal() {
+    if (!canCreateCertificate) {
+      console.warn('Blocked: lacking certificate-create permission');
+      return;
+    }
     form = {
       name: '',
       no_certificate: '',
@@ -249,6 +265,10 @@
     showCreateModal = true;
   }
   function openEditModal(item: Certificate) {
+    if (!canUpdateCertificate) {
+      console.warn('Blocked: lacking certificate-update permission');
+      return;
+    }
     editingItem = { ...item };
     form = {
       name: item.name ?? '',
@@ -305,6 +325,10 @@
   }
 
   async function handleSubmitCreate() {
+    if (!canCreateCertificate) {
+      console.warn('Blocked: lacking certificate-create permission (submit)');
+      return;
+    }
     try {
       const fd = buildFormData();
       await apiFetch('/certificates', { method: 'POST', body: fd, auth: true });
@@ -316,6 +340,10 @@
   }
   async function handleSubmitUpdate() {
     if (!editingItem?.id) return;
+    if (!canUpdateCertificate) {
+      console.warn('Blocked: lacking certificate-update permission (submit)');
+      return;
+    }
     try {
       const fd = buildFormData();
       fd.append('_method', 'PUT');
@@ -327,6 +355,10 @@
     }
   }
   async function handleDelete(id: number) {
+    if (!canDeleteCertificate) {
+      console.warn('Blocked: lacking certificate-delete permission');
+      return;
+    }
     if (!confirm('Yakin ingin menghapus data ini?')) return;
     try {
       await apiFetch(`/certificates/${id}`, { method: 'DELETE', auth: true });
@@ -465,12 +497,14 @@
                      bg-white/70 dark:bg-[#12101d]/70 backdrop-blur text-slate-800 placeholder-slate-500
                      dark:text-slate-100 dark:placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-violet-500" />
           </div>
-          <button
-            on:click={openCreateModal}
-            class="h-9 w-9 bg-violet-600 hover:bg-violet-700 text-white rounded-md shadow-sm transition-all duration-200 hover:scale-105 active:scale-95 grid place-items-center shrink-0"
-            aria-label="Tambah Sertifikat" title="Tambah Sertifikat">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-          </button>
+          {#if canCreateCertificate}
+            <button
+              on:click={openCreateModal}
+              class="h-9 w-9 bg-violet-600 hover:bg-violet-700 text-white rounded-md shadow-sm transition-all duration-200 hover:scale-105 active:scale-95 grid place-items-center shrink-0"
+              aria-label="Tambah Sertifikat" title="Tambah Sertifikat">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+            </button>
+          {/if}
         </div>
       </div>
 
@@ -623,8 +657,12 @@
                   </a>
                   <div class="flex justify-end px-4 py-2 sm:px-6 gap-2">
                     <button on:click|stopPropagation={() => openDetailDrawer(item)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700">Detail</button>
-                    <button on:click|stopPropagation={() => openEditModal(item)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700">Edit</button>
-                    <button on:click|stopPropagation={() => handleDelete(item.id)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700">Hapus</button>
+                    {#if canUpdateCertificate}
+                      <button on:click|stopPropagation={() => openEditModal(item)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700">Edit</button>
+                    {/if}
+                    {#if canDeleteCertificate}
+                      <button on:click|stopPropagation={() => handleDelete(item.id)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700">Hapus</button>
+                    {/if}
                   </div>
                 </li>
               {/each}
@@ -687,14 +725,18 @@
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                             <span class="sr-only">Detail, {item.name}</span>
                           </button>
-                          <button on:click|stopPropagation={() => openEditModal(item)} title="Edit" class="text-violet-700 hover:text-violet-800 dark:text-violet-300 dark:hover:text-violet-200">
-                            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                            <span class="sr-only">Edit, {item.name}</span>
-                          </button>
-                          <button on:click|stopPropagation={() => handleDelete(item.id)} title="Delete" class="text-rose-600 hover:text-rose-700">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                            <span class="sr-only">Hapus, {item.name}</span>
-                          </button>
+                          {#if canUpdateCertificate}
+                            <button on:click|stopPropagation={() => openEditModal(item)} title="Edit" class="text-violet-700 hover:text-violet-800 dark:text-violet-300 dark:hover:text-violet-200">
+                              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                              <span class="sr-only">Edit, {item.name}</span>
+                            </button>
+                          {/if}
+                          {#if canDeleteCertificate}
+                            <button on:click|stopPropagation={() => handleDelete(item.id)} title="Delete" class="text-rose-600 hover:text-rose-700">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                              <span class="sr-only">Hapus, {item.name}</span>
+                            </button>
+                          {/if}
                         </div>
                       </td>
                     </tr>

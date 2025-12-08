@@ -10,6 +10,7 @@
 
   import BarangCertificateFilterDesktop from '$lib/components/filters/BarangCertificateFilterDekstop.svelte';
   import BarangCertificateFilterMobile from '$lib/components/filters/BarangCertificateFilterMobile.svelte';
+  import { userPermissions } from '$lib/stores/permissions';
 
   type Mitra = { id: number; nama: string };
   type BarangCertificate = {
@@ -27,6 +28,18 @@
   let mitras: Mitra[] = [];
   let loading = true;
   let error = '';
+
+  // ====== PERMISSIONS ======
+  let canCreateBC = false;
+  let canUpdateBC = false;
+  let canDeleteBC = false;
+
+  $: {
+    const perms = $userPermissions ?? [];
+    canCreateBC = perms.includes('bc-create');
+    canUpdateBC = perms.includes('bc-update');
+    canDeleteBC = perms.includes('bc-delete');
+  }
 
   // ====== FILTER / QUERY STATE ======
   let search = '';
@@ -165,10 +178,18 @@
   function goToPage(page: number) { if (page > 0 && page <= lastPage) { currentPage = page; fetchList(); } }
 
   function openCreateModal() {
+    if (!canCreateBC) {
+      console.warn('Blocked: lacking bc-create permission');
+      return;
+    }
     form = { name: '', no_seri: '', mitra_id: '' };
     showCreateModal = true;
   }
   function openEditModal(item: BarangCertificate) {
+    if (!canUpdateBC) {
+      console.warn('Blocked: lacking bc-update permission');
+      return;
+    }
     editingItem = { ...item };
     form = { name: item.name ?? '', no_seri: item.no_seri ?? '', mitra_id: item.mitra_id ?? '' };
     showEditModal = true;
@@ -176,6 +197,10 @@
   function openDetailDrawer(item: BarangCertificate) { selectedItem = { ...item }; showDetailDrawer = true; }
 
   async function handleSubmitCreate() {
+    if (!canCreateBC) {
+      console.warn('Blocked: lacking bc-create permission (submit)');
+      return;
+    }
     try {
       await apiFetch('/barang-certificates', { method: 'POST', body: form, auth: true });
       alert('Data berhasil ditambahkan');
@@ -187,6 +212,10 @@
 
   async function handleSubmitUpdate() {
     if (!editingItem?.id) return;
+    if (!canUpdateBC) {
+      console.warn('Blocked: lacking bc-update permission (submit)');
+      return;
+    }
     try {
       await apiFetch(`/barang-certificates/${editingItem.id}`, { method: 'PUT', body: form, auth: true });
       alert('Data berhasil diperbarui');
@@ -197,6 +226,10 @@
   }
 
   async function handleDelete(id: number) {
+    if (!canDeleteBC) {
+      console.warn('Blocked: lacking bc-delete permission');
+      return;
+    }
     if (!confirm('Yakin ingin menghapus data ini?')) return;
     try {
       await apiFetch(`/barang-certificates/${id}`, { method: 'DELETE', auth: true });
@@ -316,14 +349,16 @@
                      bg-white/70 dark:bg-[#12101d]/70 backdrop-blur text-slate-800 placeholder-slate-500
                      dark:text-slate-100 dark:placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-violet-500" />
           </div>
-          <button
-            on:click={openCreateModal}
-            class="h-9 w-9 bg-violet-600 hover:bg-violet-700 text-white rounded-md shadow-sm transition-all duration-200 hover:scale-105 active:scale-95 grid place-items-center shrink-0"
-            aria-label="Tambah Barang" title="Tambah Barang">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-          </button>
+          {#if canCreateBC}
+            <button
+              on:click={openCreateModal}
+              class="h-9 w-9 bg-violet-600 hover:bg-violet-700 text-white rounded-md shadow-sm transition-all duration-200 hover:scale-105 active:scale-95 grid place-items-center shrink-0"
+              aria-label="Tambah Barang" title="Tambah Barang">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+            </button>
+          {/if}
         </div>
       </div>
 
@@ -462,8 +497,12 @@
 
                   <div class="flex justify-end px-4 py-2 sm:px-6 gap-2">
                     <button on:click|stopPropagation={() => openDetailDrawer(item)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700">Detail</button>
-                    <button on:click|stopPropagation={() => openEditModal(item)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700">Edit</button>
-                    <button on:click|stopPropagation={() => handleDelete(item.id)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700">Hapus</button>
+                    {#if canUpdateBC}
+                      <button on:click|stopPropagation={() => openEditModal(item)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700">Edit</button>
+                    {/if}
+                    {#if canDeleteBC}
+                      <button on:click|stopPropagation={() => handleDelete(item.id)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700">Hapus</button>
+                    {/if}
                   </div>
                 </li>
               {/each}

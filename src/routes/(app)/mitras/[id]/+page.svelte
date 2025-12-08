@@ -9,6 +9,7 @@
   import MitraDetail from '$lib/components/detail/MitraDetail.svelte';
   import MitraFormModal from '$lib/components/form/MitraFormModal.svelte';
   import BarangCertificateFormModal from '$lib/components/form/BarangCertificateFormModal.svelte';
+  import { userPermissions } from '$lib/stores/permissions';
 
   let mitraId: string | null = null;
   let mitra: any = null;
@@ -46,6 +47,21 @@
     created_at?: string;
     updated_at?: string;
   };
+
+  let canUpdateMitra = false;
+  let canDeleteMitra = false;
+  let canCreateBC = false;
+  let canUpdateBC = false;
+  let canDeleteBC = false;
+
+  $: {
+    const perms = $userPermissions ?? [];
+    canUpdateMitra = perms.includes('mitra-update');
+    canDeleteMitra = perms.includes('mitra-delete');
+    canCreateBC = perms.includes('bc-create');
+    canUpdateBC = perms.includes('bc-update');
+    canDeleteBC = perms.includes('bc-delete');
+  }
 
   let bcItems: BarangCertificate[] = [];
   let bcLoading = false;
@@ -120,10 +136,20 @@
     }
   }
 
-  function openEditModal() { showEditModal = true; }
+  function openEditModal() {
+    if (!canUpdateMitra) {
+      console.warn('Blocked: lacking mitra-update permission');
+      return;
+    }
+    showEditModal = true;
+  }
 
   async function handleSubmitUpdate() {
     if (!mitra?.id) return;
+    if (!canUpdateMitra) {
+      console.warn('Blocked: lacking mitra-update permission (submit)');
+      return;
+    }
     try {
       await apiFetch(`/mitras/${mitra.id}`, { method: 'PUT', body: form, auth: true });
       alert('Mitra berhasil diperbarui!');
@@ -137,6 +163,10 @@
 
   async function handleDelete() {
     if (!mitra?.id) return;
+    if (!canDeleteMitra) {
+      console.warn('Blocked: lacking mitra-delete permission');
+      return;
+    }
     if (!confirm('Apakah Anda yakin ingin menghapus mitra ini?')) return;
     try {
       await apiFetch(`/mitras/${mitra.id}`, { method: 'DELETE', auth: true });
@@ -177,12 +207,20 @@
   function bcGoToPage(page: number) { if (page > 0 && page <= bcLastPage) { bcCurrentPage = page; fetchBarangCertificates(); } }
 
   function bcOpenCreateModal() {
+    if (!canCreateBC) {
+      console.warn('Blocked: lacking bc-create permission');
+      return;
+    }
     if (!mitra?.id) return;
     bcForm = { name: '', no_seri: '', mitra_id: mitra.id };
     bcShowCreateModal = true;
   }
 
   function bcOpenEditModal(item: BarangCertificate) {
+    if (!canUpdateBC) {
+      console.warn('Blocked: lacking bc-update permission');
+      return;
+    }
     bcEditingItem = { ...item };
     bcForm = { name: item.name ?? '', no_seri: item.no_seri ?? '', mitra_id: mitra?.id ?? '' };
     bcShowEditModal = true;
@@ -194,6 +232,10 @@
   }
 
   async function bcHandleSubmitCreate() {
+    if (!canCreateBC) {
+      console.warn('Blocked: lacking bc-create permission (submit)');
+      return;
+    }
     try {
       if (mitra?.id) bcForm.mitra_id = mitra.id;
       await apiFetch('/barang-certificates', { method: 'POST', body: bcForm, auth: true });
@@ -207,6 +249,10 @@
 
   async function bcHandleSubmitUpdate() {
     if (!bcEditingItem?.id) return;
+    if (!canUpdateBC) {
+      console.warn('Blocked: lacking bc-update permission (submit)');
+      return;
+    }
     try {
       if (mitra?.id) bcForm.mitra_id = mitra.id;
       await apiFetch(`/barang-certificates/${bcEditingItem.id}`, { method: 'PUT', body: bcForm, auth: true });
@@ -219,6 +265,10 @@
   }
 
   async function bcHandleDelete(id: number) {
+    if (!canDeleteBC) {
+      console.warn('Blocked: lacking bc-delete permission');
+      return;
+    }
     if (!confirm('Yakin ingin menghapus data ini?')) return;
     try {
       await apiFetch(`/barang-certificates/${id}`, { method: 'DELETE', auth: true });
@@ -343,8 +393,12 @@
               </div>
             </div>
             <div class="flex flex-col sm:flex-row gap-2 shrink-0">
-              <button on:click={openEditModal} class="px-4 h-9 rounded-md text-sm font-semibold text-white bg-violet-600 hover:bg-violet-700 shadow-sm">Edit Mitra</button>
-              <button on:click={handleDelete} class="px-4 h-9 rounded-md text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 shadow-sm">Hapus Mitra</button>
+              {#if canUpdateMitra}
+                <button on:click={openEditModal} class="px-4 h-9 rounded-md text-sm font-semibold text-white bg-violet-600 hover:bg-violet-700 shadow-sm">Edit Mitra</button>
+              {/if}
+              {#if canDeleteMitra}
+                <button on:click={handleDelete} class="px-4 h-9 rounded-md text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 shadow-sm">Hapus Mitra</button>
+              {/if}
             </div>
           </div>
         </div>
@@ -451,16 +505,18 @@
                       class="block w-full pl-10 pr-3 h-9 rounded-md text-sm border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 placeholder-slate-500 dark:placeholder-slate-400 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-violet-500"
                     />
                   </div>
-                  <button
-                    on:click={bcOpenCreateModal}
-                    class="h-9 w-9 bg-violet-600 hover:bg-violet-700 text-white rounded-md shadow-sm transition-all duration-200 hover:scale-105 active:scale-95 grid place-items-center shrink-0"
-                    aria-label="Tambah Barang"
-                    title="Tambah Barang"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                    </svg>
-                  </button>
+                  {#if canCreateBC}
+                    <button
+                      on:click={bcOpenCreateModal}
+                      class="h-9 w-9 bg-violet-600 hover:bg-violet-700 text-white rounded-md shadow-sm transition-all duration-200 hover:scale-105 active:scale-95 grid place-items-center shrink-0"
+                      aria-label="Tambah Barang"
+                      title="Tambah Barang"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                      </svg>
+                    </button>
+                  {/if}
                 </div>
               </div>
 
@@ -593,8 +649,12 @@
                             </a>
                             <div class="flex justify-end px-4 py-2 sm:px-6 gap-2">
                               <button on:click|stopPropagation={() => bcOpenDetailDrawer(item)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700">Detail</button>
-                              <button on:click|stopPropagation={() => bcOpenEditModal(item)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700">Edit</button>
-                              <button on:click|stopPropagation={() => bcHandleDelete(item.id)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700">Hapus</button>
+                              {#if canUpdateBC}
+                                <button on:click|stopPropagation={() => bcOpenEditModal(item)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700">Edit</button>
+                              {/if}
+                              {#if canDeleteBC}
+                                <button on:click|stopPropagation={() => bcHandleDelete(item.id)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700">Hapus</button>
+                              {/if}
                             </div>
                           </li>
                         {/each}
@@ -656,21 +716,25 @@
                                       </svg>
                                       <span class="sr-only">Detail, {item.name}</span>
                                     </button>
-                                    <button on:click={() => bcOpenEditModal(item)} class="text-violet-700 hover:text-violet-800 dark:text-violet-300 dark:hover:text-violet-200" title="Edit">
-                                      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                      </svg>
-                                      <span class="sr-only">Edit, {item.name}</span>
-                                    </button>
-                                    <button on:click={() => bcHandleDelete(item.id)} class="text-rose-600 hover:text-rose-700" title="Hapus">
-                                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <polyline points="3 6 5 6 21 6" />
-                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                                        <line x1="10" y1="11" x2="10" y2="17" />
-                                        <line x1="14" y1="11" x2="14" y2="17" />
-                                      </svg>
-                                      <span class="sr-only">Hapus, {item.name}</span>
-                                    </button>
+                                    {#if canUpdateBC}
+                                      <button on:click={() => bcOpenEditModal(item)} class="text-violet-700 hover:text-violet-800 dark:text-violet-300 dark:hover:text-violet-200" title="Edit">
+                                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                        <span class="sr-only">Edit, {item.name}</span>
+                                      </button>
+                                    {/if}
+                                    {#if canDeleteBC}
+                                      <button on:click={() => bcHandleDelete(item.id)} class="text-rose-600 hover:text-rose-700" title="Hapus">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                          <polyline points="3 6 5 6 21 6" />
+                                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                          <line x1="10" y1="11" x2="10" y2="17" />
+                                          <line x1="14" y1="11" x2="14" y2="17" />
+                                        </svg>
+                                        <span class="sr-only">Hapus, {item.name}</span>
+                                      </button>
+                                    {/if}
                                   </div>
                                 </td>
                               </tr>

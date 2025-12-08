@@ -5,6 +5,7 @@
   import { apiFetch, getToken } from '$lib/api';
   import BarangCertificatesDetail from '$lib/components/detail/BarangCertificatesDetail.svelte';
   import BarangCertificateFormModal from '$lib/components/form/BarangCertificateFormModal.svelte';
+  import { userPermissions } from '$lib/stores/permissions';
 
   type Mitra = { id: number; nama: string };
 
@@ -15,6 +16,15 @@
 
   let mitras: Mitra[] = [];
   let showEditModal = false;
+
+  let canUpdateBC = false;
+  let canDeleteBC = false;
+
+  $: {
+    const perms = $userPermissions ?? [];
+    canUpdateBC = perms.includes('bc-update');
+    canDeleteBC = perms.includes('bc-delete');
+  }
 
   let form: { name: string; no_seri: string; mitra_id: number | '' | null } = {
     name: '', no_seri: '', mitra_id: ''
@@ -42,11 +52,19 @@
 
   function openEditModal() {
     if (!item) return;
+    if (!canUpdateBC) {
+      console.warn('Blocked: lacking bc-update permission');
+      return;
+    }
     form = { name: item.name ?? '', no_seri: item.no_seri ?? '', mitra_id: item.mitra_id ?? '' };
     showEditModal = true;
   }
 
   async function handleSubmitUpdate() {
+    if (!canUpdateBC) {
+      console.warn('Blocked: lacking bc-update permission (submit)');
+      return;
+    }
     try {
       await apiFetch(`/barang-certificates/${id}`, { method: 'PUT', body: form, auth: true });
       alert('Data berhasil diperbarui!');
@@ -59,6 +77,10 @@
   }
 
   async function handleDelete() {
+    if (!canDeleteBC) {
+      console.warn('Blocked: lacking bc-delete permission');
+      return;
+    }
     if (!confirm('Apakah Anda yakin ingin menghapus data ini?')) return;
     try {
       await apiFetch(`/barang-certificates/${id}`, { method: 'DELETE', auth: true });
@@ -158,10 +180,14 @@
         </div>
       </div>
       <div class="flex flex-col sm:flex-row gap-2 shrink-0">
-        <button on:click={openEditModal}
-          class="px-4 h-9 rounded-md text-sm font-semibold text-white bg-violet-600 hover:bg-violet-700">Edit</button>
-        <button on:click={handleDelete}
-          class="px-4 h-9 rounded-md text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700">Hapus</button>
+        {#if canUpdateBC}
+          <button on:click={openEditModal}
+            class="px-4 h-9 rounded-md text-sm font-semibold text-white bg-violet-600 hover:bg-violet-700">Edit</button>
+        {/if}
+        {#if canDeleteBC}
+          <button on:click={handleDelete}
+            class="px-4 h-9 rounded-md text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700">Hapus</button>
+        {/if}
       </div>
     </div>
 

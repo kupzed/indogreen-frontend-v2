@@ -5,6 +5,7 @@
   import { apiFetch, getToken } from '$lib/api';
   import CertificateFormModal from '$lib/components/form/CertificateFormModal.svelte';
   import CertificateDetail from '$lib/components/detail/CertificatesDetail.svelte';
+  import { userPermissions } from '$lib/stores/permissions';
 
   type Option = { id: number; name?: string; title?: string; no_seri?: string };
   type AttachmentItem = {
@@ -26,6 +27,14 @@
   let filteredBarangCertificates: Option[] = [];
 
   let showEditModal = false;
+  let canUpdateCertificate = false;
+  let canDeleteCertificate = false;
+
+  $: {
+    const perms = $userPermissions ?? [];
+    canUpdateCertificate = perms.includes('certificate-update');
+    canDeleteCertificate = perms.includes('certificate-delete');
+  }
 
   let form: {
     name: string;
@@ -157,10 +166,18 @@
     } else {
       filteredBarangCertificates = [];
     }
+    if (!canUpdateCertificate) {
+      console.warn('Blocked: lacking certificate-update permission');
+      return;
+    }
     showEditModal = true;
   }
 
   async function handleSubmitUpdate() {
+    if (!canUpdateCertificate) {
+      console.warn('Blocked: lacking certificate-update permission (submit)');
+      return;
+    }
     try {
       const fd = buildFormData();
       fd.append('_method', 'PUT');
@@ -175,6 +192,10 @@
   }
 
   async function handleDelete() {
+    if (!canDeleteCertificate) {
+      console.warn('Blocked: lacking certificate-delete permission');
+      return;
+    }
     if (!confirm('Apakah Anda yakin ingin menghapus data ini?')) return;
     try {
       await apiFetch(`/certificates/${id}`, { method: 'DELETE', auth: true });
@@ -280,10 +301,14 @@
         </div>
       </div>
       <div class="flex flex-col sm:flex-row gap-2 shrink-0">
-        <button on:click={openEditModal}
-          class="px-4 h-9 rounded-md text-sm font-semibold text-white bg-violet-600 hover:bg-violet-700">Edit</button>
-        <button on:click={handleDelete}
-          class="px-4 h-9 rounded-md text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700">Hapus</button>
+        {#if canUpdateCertificate}
+          <button on:click={openEditModal}
+            class="px-4 h-9 rounded-md text-sm font-semibold text-white bg-violet-600 hover:bg-violet-700">Edit</button>
+        {/if}
+        {#if canDeleteCertificate}
+          <button on:click={handleDelete}
+            class="px-4 h-9 rounded-md text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700">Hapus</button>
+        {/if}
       </div>
     </div>
 

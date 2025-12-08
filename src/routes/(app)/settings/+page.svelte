@@ -114,6 +114,10 @@
   let users: RoleUser[] = [];
   let myRoles: string[] = [];
   let selectedUserIsSuperAdmin = false;
+  let currentIsSuperAdmin = false;
+
+  // reactive list of visible roles depending on current user's privilege
+  $: roleOptions = currentIsSuperAdmin ? ['user', 'staff', 'admin', 'super_admin'] : ['user', 'staff', 'admin'];
 
   let roleData: RoleForm = {
     userId: '',
@@ -376,6 +380,7 @@
       const isAdmin = myRoles.includes('admin');
       const isSA = myRoles.includes('super_admin');
 
+      currentIsSuperAdmin = isSA;
       currentIsOnlyAdmin = isAdmin && !isSA;
       canManageRoles = isAdmin || isSA;
 
@@ -682,6 +687,7 @@
             <div class="border-b border-black/5 dark:border-white/10 pb-6 mb-6">
               <h2 class="text-lg sm:text-xl font-semibold text-slate-900 dark:text-slate-100">Role Management</h2>
               <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                Role kamu adalah <b>'{myRoles.length ? myRoles.join(', ') : '—'}'.</b>
                 Atur role dan permission detail (view, create, update, delete) untuk setiap modul.
               </p>
             </div>
@@ -731,7 +737,7 @@
                   Tipe Akun (Role)
                 </span>
                 <div class="space-y-3">
-                  {#each ['user', 'staff', 'admin'] as rOption}
+                  {#each roleOptions as rOption}
                     <label
                       class="relative flex items-center p-3 rounded-xl border transition-all cursor-pointer
                         {roleData.selectedRole === rOption 
@@ -751,8 +757,10 @@
                         class="flex items-center justify-center h-5 w-5 rounded-full border border-slate-300 dark:border-slate-600 mr-3
                                {roleData.selectedRole === rOption ? 'border-violet-600 bg-violet-600' : ''}"
                       >
-                        {#if roleData.selectedRole === rOption}
-                          <div class="h-2 w-2 rounded-full bg-white"></div>
+                        {#if roleData.selectedRole === 'super_admin' && !currentIsSuperAdmin}
+                          <div class="mb-3 text-sm text-red-600 dark:text-red-400">
+                            Target user memiliki role <b>super_admin</b>. Anda tidak memiliki hak untuk mengubah role ini.
+                          </div>
                         {/if}
                       </div>
                       <div>
@@ -762,9 +770,9 @@
                           {rOption}
                         </span>
                         <span class="block text-xs text-slate-500 dark:text-slate-400">
-                          {rOption === 'admin'
-                            ? 'Akses penuh sistem'
-                            : rOption === 'staff'
+                          {rOption === 'super_admin'
+                            ? 'Akses penuh sistem' : rOption === 'admin'
+                            ? 'Dapat memberi role pada user' : rOption === 'staff'
                             ? 'Manajemen operasional (dapat dikustom)'
                             : 'Akses pengguna standar (dapat dikustom)'}
                         </span>

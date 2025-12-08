@@ -10,6 +10,7 @@
 
   import ActivityFilterDesktop from '$lib/components/filters/ActivityFilterDesktop.svelte';
   import ActivityFilterMobile from '$lib/components/filters/ActivityFilterMobile.svelte';
+  import { userPermissions } from '$lib/stores/permissions';
 
   // ===== DATA =====
   let activities: any[] = [];
@@ -20,6 +21,17 @@
   let activityJenisList: string[] = [];
   let loading = true;
   let error = '';
+
+  // ===== PERMISSIONS =====
+  let canCreateActivity = false;
+  let canUpdateActivity = false;
+  let canDeleteActivity = false;
+  $: {
+    const perms = $userPermissions ?? [];
+    canCreateActivity = perms.includes('activity-create');
+    canUpdateActivity = perms.includes('activity-update');
+    canDeleteActivity = perms.includes('activity-delete');
+  }
 
   // ===== FILTER / QUERY STATE =====
   let search = '';
@@ -182,6 +194,10 @@
   function goToPage(page: number) { if (page > 0 && page <= lastPage) { currentPage = page; fetchActivities(); } }
 
   function openCreateModal() {
+    if (!canCreateActivity) {
+      console.warn('Blocked: lacking activity-create permission');
+      return;
+    }
     form = {
       name: '', short_desc: '', description: '', project_id: '', kategori: '',
       activity_date: '', jenis: '', mitra_id: null, from: '', to: '',
@@ -191,6 +207,10 @@
     showCreateModal = true;
   }
   function openEditModal(a: any) {
+    if (!canUpdateActivity) {
+      console.warn('Blocked: lacking activity-update permission');
+      return;
+    }
     editingActivity = { ...a };
     form = {
       name: a.name ?? '',
@@ -264,6 +284,10 @@
   }
 
   async function handleSubmitCreate() {
+    if (!canCreateActivity) {
+      console.warn('Blocked: lacking activity-create permission (submit)');
+      return;
+    }
     try {
       const fd = buildFormDataForActivity();
       await apiFetch('/activities', { method: 'POST', body: fd, auth: true });
@@ -275,6 +299,10 @@
   }
   async function handleSubmitUpdate() {
     if (!editingActivity?.id) return;
+    if (!canUpdateActivity) {
+      console.warn('Blocked: lacking activity-update permission (submit)');
+      return;
+    }
     try {
       const fd = buildFormDataForActivity();
       fd.append('_method', 'PUT');
@@ -286,6 +314,10 @@
     }
   }
   async function handleDelete(id: number) {
+    if (!canDeleteActivity) {
+      console.warn('Blocked: lacking activity-delete permission');
+      return;
+    }
     if (!confirm('Apakah Anda yakin ingin menghapus aktivitas ini?')) return;
     try {
       await apiFetch(`/activities/${id}`, { method: 'DELETE', auth: true });
@@ -435,12 +467,14 @@
                      bg-white/70 dark:bg-[#12101d]/70 backdrop-blur text-slate-800 placeholder-slate-500
                      dark:text-slate-100 dark:placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-violet-500" />
           </div>
-          <button
-            on:click={openCreateModal}
-            class="h-9 w-9 bg-violet-600 hover:bg-violet-700 text-white rounded-md shadow-sm transition-all duration-200 hover:scale-105 active:scale-95 grid place-items-center shrink-0"
-            aria-label="Tambah Aktivitas" title="Tambah Aktivitas">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-          </button>
+          {#if canCreateActivity}
+            <button
+              on:click={openCreateModal}
+              class="h-9 w-9 bg-violet-600 hover:bg-violet-700 text-white rounded-md shadow-sm transition-all duration-200 hover:scale-105 active:scale-95 grid place-items-center shrink-0"
+              aria-label="Tambah Aktivitas" title="Tambah Aktivitas">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+            </button>
+          {/if}
         </div>
       </div>
 
@@ -595,8 +629,12 @@
                   </a>
                   <div class="flex justify-end px-4 py-2 sm:px-6 gap-2">
                     <button on:click|stopPropagation={() => openDetailDrawer(activity)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700">Detail</button>
-                    <button on:click|stopPropagation={() => openEditModal(activity)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700">Edit</button>
-                    <button on:click|stopPropagation={() => handleDelete(activity.id)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700">Hapus</button>
+                    {#if canUpdateActivity}
+                      <button on:click|stopPropagation={() => openEditModal(activity)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700">Edit</button>
+                    {/if}
+                    {#if canDeleteActivity}
+                      <button on:click|stopPropagation={() => handleDelete(activity.id)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700">Hapus</button>
+                    {/if}
                   </div>
                 </li>
               {/each}
@@ -658,14 +696,18 @@
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                             <span class="sr-only">Detail, {a.name}</span>
                           </button>
-                          <button on:click|stopPropagation={() => openEditModal(a)} title="Edit" class="text-violet-700 hover:text-violet-800 dark:text-violet-300 dark:hover:text-violet-200">
-                            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                            <span class="sr-only">Edit, {a.name}</span>
-                          </button>
-                          <button on:click|stopPropagation={() => handleDelete(a.id)} title="Delete" class="text-rose-600 hover:text-rose-700">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-                            <span class="sr-only">Hapus, {a.name}</span>
-                          </button>
+                          {#if canUpdateActivity}
+                            <button on:click|stopPropagation={() => openEditModal(a)} title="Edit" class="text-violet-700 hover:text-violet-800 dark:text-violet-300 dark:hover:text-violet-200">
+                              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                              <span class="sr-only">Edit, {a.name}</span>
+                            </button>
+                          {/if}
+                          {#if canDeleteActivity}
+                            <button on:click|stopPropagation={() => handleDelete(a.id)} title="Delete" class="text-rose-600 hover:text-rose-700">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                              <span class="sr-only">Hapus, {a.name}</span>
+                            </button>
+                          {/if}
                         </div>
                       </td>
                     </tr>

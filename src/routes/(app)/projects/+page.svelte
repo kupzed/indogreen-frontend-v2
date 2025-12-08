@@ -8,12 +8,26 @@
   import ProjectFormModal from '$lib/components/form/ProjectFormModal.svelte';
   import ProjectFilterDesktop from '$lib/components/filters/ProjectFilterDesktop.svelte';
   import ProjectFilterMobile from '$lib/components/filters/ProjectFilterMobile.svelte';
+  import { userPermissions } from '$lib/stores/permissions';
 
   // ====== DATA ======
   let projects: any[] = [];
   let customers: any[] = [];
   let loading = true;
   let error = '';
+
+  // ====== PERMISSIONS (reactive) ======
+  let canCreate = false;
+  let canUpdate = false;
+  let canDelete = false;
+
+  // Svelte auto-subscribe: $userPermissions tersedia jika store diimport
+  $: {
+    const perms = $userPermissions ?? [];
+    canCreate = perms.includes('project-create');
+    canUpdate = perms.includes('project-update');
+    canDelete = perms.includes('project-delete');
+  }
 
   // ====== FILTER / QUERY STATE ======
   let search = '';
@@ -23,7 +37,7 @@
   let dateFromFilter = '';
   let dateToFilter = '';
 
-  // NEW: kontrol sorting (sesuai baseline)
+  // kontrol sorting
   let sortBy: 'created' | 'start_date' = 'created';
   let sortDir: 'desc' | 'asc' = 'desc';
 
@@ -192,10 +206,18 @@
   function goToPage(page: number) { if (page > 0 && page <= lastPage) { currentPage = page; fetchProjects(); } }
 
   function openCreateModal() {
+    if (!canCreate) {
+      console.warn('Blocked: missing project-create permission');
+      return;
+    }
     form = { name:'', description:'', status:'', start_date:'', finish_date:'', mitra_id:'', kategori:'', lokasi:'', no_po:'', no_so:'', is_cert_projects:false };
     showCreateModal = true;
   }
   function openEditModal(project: any) {
+    if (!canUpdate) {
+      console.warn('Blocked: missing project-update permission');
+      return;
+    }
     editingProject = { ...project };
     form = { ...editingProject, mitra_id: editingProject.mitra_id || '', is_cert_projects: !!editingProject.is_cert_projects };
     showEditModal = true;
@@ -203,6 +225,10 @@
   function openDetailDrawer(project: any) { selectedProject = { ...project }; showDetailDrawer = true; }
 
   async function handleSubmitCreate() {
+    if (!canCreate) {
+      console.warn('Blocked: missing project-create permission (submit create)');
+      return;
+    }
     try {
       await apiFetch('/projects', { method: 'POST', body: form, auth: true });
       alert('Project berhasil ditambahkan!');
@@ -214,6 +240,10 @@
 
   async function handleSubmitUpdate() {
     if (!editingProject?.id) return;
+    if (!canUpdate) {
+      console.warn('Blocked: missing project-update permission (submit update)');
+      return;
+    }
     try {
       await apiFetch(`/projects/${editingProject.id}`, { method: 'PUT', body: form, auth: true });
       alert('Project berhasil diperbarui!');
@@ -224,6 +254,10 @@
   }
 
   async function handleDelete(projectId: number) {
+    if (!canDelete) {
+      console.warn('Blocked: missing project-delete permission (delete)');
+      return;
+    }
     if (!confirm('Apakah Anda yakin ingin menghapus project ini?')) return;
     try {
       await apiFetch(`/projects/${projectId}`, { method: 'DELETE', auth: true });
@@ -396,14 +430,16 @@
                      bg-white/70 dark:bg-[#12101d]/70 backdrop-blur text-slate-800 placeholder-slate-500
                      dark:text-slate-100 dark:placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-violet-500" />
           </div>
-          <button
-            on:click={openCreateModal}
-            class="h-9 w-9 bg-violet-600 hover:bg-violet-700 text-white rounded-md shadow-sm transition-all duration-200 hover:scale-105 active:scale-95 grid place-items-center shrink-0"
-            aria-label="Tambah Project" title="Tambah Project">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-          </button>
+          {#if canCreate}
+            <button
+              on:click={openCreateModal}
+              class="h-9 w-9 bg-violet-600 hover:bg-violet-700 text-white rounded-md shadow-sm transition-all duration-200 hover:scale-105 active:scale-95 grid place-items-center shrink-0"
+              aria-label="Tambah Project" title="Tambah Project">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+            </button>
+          {/if}
         </div>
       </div>
       <!-- CHIPS -->
@@ -592,8 +628,12 @@
 
                   <div class="flex justify-end px-4 py-2 sm:px-6 gap-2">
                     <button on:click|stopPropagation={() => openDetailDrawer(project)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700">Detail</button>
-                    <button on:click|stopPropagation={() => openEditModal(project)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700">Edit</button>
-                    <button on:click|stopPropagation={() => handleDelete(project.id)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700">Hapus</button>
+                    {#if canUpdate}
+                      <button on:click|stopPropagation={() => openEditModal(project)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700">Edit</button>
+                    {/if}
+                    {#if canDelete}
+                      <button on:click|stopPropagation={() => handleDelete(project.id)} class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700">Hapus</button>
+                    {/if}
                   </div>
                 </li>
               {/each}
@@ -663,14 +703,18 @@
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                             <span class="sr-only">Detail, {project.name}</span>
                           </button>
-                          <button on:click|stopPropagation={() => openEditModal(project)} title="Edit" class="text-violet-700 hover:text-violet-800 dark:text-violet-300 dark:hover:text-violet-200">
-                            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                            <span class="sr-only">Edit, {project.name}</span>
-                          </button>
-                          <button on:click|stopPropagation={() => handleDelete(project.id)} title="Delete" class="text-rose-600 hover:text-rose-700">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                            <span class="sr-only">Hapus, {project.name}</span>
-                          </button>
+                          {#if canUpdate}
+                            <button on:click|stopPropagation={() => openEditModal(project)} title="Edit" class="text-violet-700 hover:text-violet-800 dark:text-violet-300 dark:hover:text-violet-200">
+                              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                              <span class="sr-only">Edit, {project.name}</span>
+                            </button>
+                          {/if}
+                          {#if canDelete}
+                            <button on:click|stopPropagation={() => handleDelete(project.id)} title="Delete" class="text-rose-600 hover:text-rose-700">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                              <span class="sr-only">Hapus, {project.name}</span>
+                            </button>
+                          {/if}
                         </div>
                       </td>
                     </tr>
