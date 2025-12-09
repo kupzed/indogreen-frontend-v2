@@ -16,7 +16,6 @@
   let savingRole = false;
 
   // ===== Profile State =====
-  // Snapshot untuk cek "dirty"
   let serverName = '';
   let serverEmail = '';
 
@@ -49,7 +48,16 @@
     pwRules.confirmMatch &&
     !savingPw;
 
-  // ===== ROLE MANAGEMENT STATE =====
+  // ===== ROLE MANAGEMENT STATE (DYNAMIC) =====
+  
+  // Tipe data untuk konfigurasi yang diterima dari backend
+  type ModuleConfig = { key: string; label: string; desc?: string };
+  type ActionConfig = { key: string; label: string };
+
+  // Variabel untuk menyimpan config (bukan konstanta lagi)
+  let moduleList: ModuleConfig[] = [];
+  let actionList: ActionConfig[] = [];
+
   type RoleUser = {
     id: number;
     name: string;
@@ -58,52 +66,8 @@
     permissions: string[];
   };
 
-  type PermissionActions = {
-    view: boolean;
-    create: boolean;
-    update: boolean;
-    delete: boolean;
-  };
-
-  const MODULE_KEYS = ['project', 'activity', 'mitra', 'bc', 'certificate'] as const;
-  type ModuleKey = (typeof MODULE_KEYS)[number];
-
-  const MODULE_CONFIG: { key: ModuleKey; label: string; desc: string }[] = [
-    { key: 'project', label: 'Projects', desc: 'Akses menu manajemen project' },
-    { key: 'activity', label: 'Activities', desc: 'Akses menu laporan aktivitas' },
-    { key: 'mitra', label: 'Mitra', desc: 'Akses data kemitraan' },
-    { key: 'bc', label: 'Barang Certificates', desc: 'Akses data barang certificates' },
-    { key: 'certificate', label: 'Certificates', desc: 'Akses data certificates' }
-  ];
-
-  const ACTION_KEYS: (keyof PermissionActions)[] = ['view', 'create', 'update', 'delete'];
-  const ACTION_LABELS: Record<keyof PermissionActions, string> = {
-    view: 'View',
-    create: 'Create',
-    update: 'Update',
-    delete: 'Delete'
-  };
-
-  type ModulesState = Record<ModuleKey, PermissionActions>;
-
-  function createEmptyModules(): ModulesState {
-    const base: PermissionActions = { view: false, create: false, update: false, delete: false };
-    return {
-      project: { ...base },
-      activity: { ...base },
-      mitra: { ...base },
-      bc: { ...base },
-      certificate: { ...base }
-    };
-  }
-
-  function cloneModules(mods: ModulesState): ModulesState {
-    const copy = {} as ModulesState;
-    for (const moduleKey of MODULE_KEYS) {
-      copy[moduleKey] = { ...mods[moduleKey] };
-    }
-    return copy;
-  }
+  // Struktur permissions sekarang dynamic: { "project": { "view": true, ... }, ... }
+  type ModulesState = Record<string, Record<string, boolean>>;
 
   type RoleForm = {
     userId: string;
@@ -122,24 +86,17 @@
   let roleData: RoleForm = {
     userId: '',
     selectedRole: 'user',
-    modules: createEmptyModules()
+    modules: {} // Inisialisasi kosong, nanti diisi createEmptyModules setelah fetch config
   };
 
-  // Snapshot untuk cek dirty state pada Role
   let initialRoleData: RoleForm = {
     userId: '',
     selectedRole: 'user',
-    modules: createEmptyModules()
+    modules: {}
   };
 
-  // modul mana yang sedang di-expand
-  let expandedModules: Record<ModuleKey, boolean> = {
-    project: true,
-    activity: true,
-    mitra: true,
-    bc: true,
-    certificate: true
-  };
+  // modul mana yang sedang di-expand (key: boolean)
+  let expandedModules: Record<string, boolean> = {};
 
   $: roleDirty = JSON.stringify(roleData) !== JSON.stringify(initialRoleData);
 
@@ -159,18 +116,40 @@
   const showError = (m: string) => toast('error', 'Gagal', m);
 
   // ===== LOGIC: ROLE =====
+
+  // Membuat object state permission kosong berdasarkan moduleList & actionList
+  function createEmptyModules(): ModulesState {
+    const mods: ModulesState = {};
+    for (const m of moduleList) {
+      mods[m.key] = {};
+      for (const a of actionList) {
+        mods[m.key][a.key] = false;
+      }
+    }
+    return mods;
+  }
+
+  function cloneModules(mods: ModulesState): ModulesState {
+    // Deep clone sederhana karena strukturnya dinamis
+    return JSON.parse(JSON.stringify(mods));
+  }
+
   function applyUserRole(user: RoleUser | null) {
+    // Pastikan config sudah ter-load sebelum apply role
+    if (moduleList.length === 0) return;
+
     if (!user) {
+      const empty = createEmptyModules();
       roleData = {
         userId: '',
         selectedRole: 'user',
-        modules: createEmptyModules()
+        modules: empty
       };
       selectedUserIsSuperAdmin = false;
       initialRoleData = {
         userId: '',
         selectedRole: 'user',
-        modules: createEmptyModules()
+        modules: cloneModules(empty)
       };
       return;
     }
@@ -178,11 +157,13 @@
     const perms = user.permissions ?? [];
     const modules = createEmptyModules();
 
-    // isi modules berdasarkan permission yang dimiliki user
-    for (const moduleKey of MODULE_KEYS) {
-      for (const action of ACTION_KEYS) {
-        const permName = `${moduleKey}-${action}`;
-        modules[moduleKey][action] = perms.includes(permName);
+    // Isi modules berdasarkan permission string yang dimiliki user (misal: "project-view")
+    for (const m of moduleList) {
+      for (const a of actionList) {
+        const permName = `${m.key}-${a.key}`;
+        if (modules[m.key]) {
+             modules[m.key][a.key] = perms.includes(permName);
+        }
       }
     }
 
@@ -204,41 +185,49 @@
   function buildPermissionsPayload(r: RoleForm): Record<string, boolean> {
     const permissions: Record<string, boolean> = {};
 
-    for (const moduleKey of MODULE_KEYS) {
-      const mod = r.modules[moduleKey];
-      for (const action of ACTION_KEYS) {
-        permissions[`${moduleKey}-${action}`] = mod[action];
+    for (const m of moduleList) {
+      const mod = r.modules[m.key];
+      if (!mod) continue;
+      
+      for (const a of actionList) {
+        // key permission yang dikirim ke backend: "namamodul-namaaksi"
+        permissions[`${m.key}-${a.key}`] = mod[a.key];
       }
     }
 
     return permissions;
   }
 
-  function toggleModuleAll(moduleKey: ModuleKey, checked: boolean) {
-    const updated: PermissionActions = {
-      view: checked,
-      create: checked,
-      update: checked,
-      delete: checked
-    };
+  function toggleModuleAll(moduleKey: string, checked: boolean) {
+    if (!roleData.modules[moduleKey]) return;
+
+    // Buat salinan state module saat ini
+    const updatedModule = { ...roleData.modules[moduleKey] };
+    
+    // Set semua action menjadi nilai checked
+    for (const a of actionList) {
+        updatedModule[a.key] = checked;
+    }
 
     roleData = {
       ...roleData,
       modules: {
         ...roleData.modules,
-        [moduleKey]: updated
+        [moduleKey]: updatedModule
       }
     };
   }
 
   function handleToggleAction(
-    moduleKey: ModuleKey,
-    action: keyof PermissionActions,
+    moduleKey: string,
+    actionKey: string,
     checked: boolean
   ) {
-    const updatedModule: PermissionActions = {
+    if (!roleData.modules[moduleKey]) return;
+
+    const updatedModule = {
       ...roleData.modules[moduleKey],
-      [action]: checked
+      [actionKey]: checked
     };
 
     roleData = {
@@ -250,16 +239,37 @@
     };
   }
 
-  function moduleAllChecked(moduleKey: ModuleKey): boolean {
+  function moduleAllChecked(moduleKey: string): boolean {
     const mod = roleData.modules[moduleKey];
-    return ACTION_KEYS.every((a) => mod[a]);
+    if (!mod) return false;
+    // Cek apakah setiap action di actionList bernilai true
+    return actionList.every((a) => mod[a.key]);
   }
 
-  function moduleSomeChecked(moduleKey: ModuleKey): boolean {
+  function moduleSomeChecked(moduleKey: string): boolean {
     const mod = roleData.modules[moduleKey];
-    const any = ACTION_KEYS.some((a) => mod[a]);
-    const all = ACTION_KEYS.every((a) => mod[a]);
+    if (!mod) return false;
+    const any = actionList.some((a) => mod[a.key]);
+    const all = actionList.every((a) => mod[a.key]);
     return any && !all;
+  }
+
+  function indeterminate(node: HTMLInputElement, value: boolean) {
+    node.indeterminate = Boolean(value);
+    return {
+      update(value: boolean) {
+        node.indeterminate = Boolean(value);
+      }
+    };
+  }
+
+  function syncChecked(node: HTMLInputElement, value: boolean) {
+    node.checked = Boolean(value);
+    return {
+      update(value: boolean) {
+        node.checked = Boolean(value);
+      }
+    };
   }
 
   async function handleSubmitRole() {
@@ -365,6 +375,22 @@
     loading = true;
     errorMsg = '';
     try {
+      // 0. Get Config (Modules & Actions) dari Backend
+      // Kita panggil ini DULUAN agar kita tahu struktur permission sebelum load user
+      const configRes: any = await apiFetch('/auth/role/config', { auth: true });
+      moduleList = configRes?.modules ?? [];
+      actionList = configRes?.actions ?? [];
+
+      // Inisialisasi expanded modules agar defaultnya terbuka semua (optional)
+      moduleList.forEach(m => {
+          expandedModules[m.key] = true;
+      });
+      
+      // Inisialisasi struktur module kosong di roleData awal
+      const emptyModules = createEmptyModules();
+      roleData.modules = emptyModules;
+      initialRoleData.modules = cloneModules(emptyModules);
+
       // 1. Get Profile
       const userData: any = await apiFetch('/auth/me', { method: 'POST', auth: true });
       serverName = userData?.name ?? '';
@@ -392,7 +418,8 @@
         if (users.length > 0) applyUserRole(users[0]);
       }
     } catch (err: any) {
-      errorMsg = err?.message || 'Gagal memuat data pengguna.';
+      console.error(err);
+      errorMsg = err?.message || 'Gagal memuat data sistem.';
       showError(errorMsg);
     } finally {
       loading = false;
@@ -404,12 +431,10 @@
   <title>Settings - Indogreen</title>
 </svelte:head>
 
-<!-- PAGE HEADER -->
 <div class="mb-6 flex items-center justify-between">
   <h1 class="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-slate-100">Settings</h1>
 </div>
 
-<!-- TABS NAVIGATION -->
 {#if loading}
   <div class="inline-flex mb-5 rounded-2xl p-1 bg-slate-100 dark:bg-white/5 border border-black/5 dark:border-white/10">
     <div class="h-8 w-20 rounded-xl bg-slate-200/70 dark:bg-white/10 animate-pulse"></div>
@@ -455,7 +480,6 @@
   </div>
 {/if}
 
-<!-- ERROR ALERT -->
 {#if errorMsg}
   <div class="mb-4 rounded-2xl border border-red-200/50 dark:border-red-800/40 bg-red-50/70 dark:bg-red-900/30 px-4 py-3 text-sm text-red-700 dark:text-red-200">
     {errorMsg}
@@ -463,7 +487,6 @@
 {/if}
 
 <div class="max-w-1xl">  
-  <!-- ===================== TAB: PROFILE ===================== -->
   {#if activeTab === 'profile'}
     <div id="panel-profile" role="tabpanel">
       <form on:submit={handleSubmitProfile}>
@@ -500,11 +523,9 @@
     </div>
   {/if}
 
-  <!-- ===================== KEAMANAN (PASSWORD) ===================== -->
   {#if activeTab === 'keamanan'}
     <div id="panel-keamanan" role="tabpanel" aria-labelledby="tab-keamanan">
       {#if loading}
-        <!-- KEAMANAN SKELETON -->
         <section class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur p-5 sm:p-6 lg:p-8 shadow-sm" role="status" aria-busy="true">
           <div class="border-b border-black/5 dark:border-white/10 pb-6">
             <div class="h-5 w-28 rounded-md bg-slate-200/70 dark:bg-white/10 animate-pulse"></div>
@@ -531,9 +552,7 @@
           </div>
 
           <div class="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- LEFT: form -->
             <div class="lg:col-span-2 space-y-5">
-              <!-- Lama -->
               <div>
                 <span class="block text-sm font-medium text-slate-900 dark:text-slate-100">Password Lama</span>
                 <div class="mt-2 relative">
@@ -563,7 +582,6 @@
                 </div>
               </div>
 
-              <!-- Baru -->
               <div>
                 <span class="block text-sm font-medium text-slate-900 dark:text-slate-100">Password Baru</span>
                 <div class="mt-2 relative">
@@ -593,7 +611,6 @@
                 </div>
               </div>
 
-              <!-- Konfirmasi -->
               <div>
                 <span class="block text-sm font-medium text-slate-900 dark:text-slate-100">Konfirmasi Password Baru</span>
                 <div class="mt-2 relative">
@@ -646,7 +663,6 @@
               </div>
             </div>
 
-            <!-- RIGHT: rules -->
             <aside class="rounded-2xl bg-teal-600/90 text-white p-5 dark:bg-teal-700">
               <h3 class="font-semibold text-lg">Persyaratan Password</h3>
               <p class="mt-1 text-sm opacity-90">Untuk membuat password yang kuat, ikuti aturan berikut:</p>
@@ -664,12 +680,10 @@
     </div>
   {/if}
 
-  <!-- ===================== TAB: ROLE (NEW DESIGN) ===================== -->
   {#if activeTab === 'role' && canManageRoles}
     <div id="panel-role" role="tabpanel">
       <form on:submit|preventDefault={handleSubmitRole}>
         {#if loading}
-          <!-- ROLE SKELETON -->
           <section class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur p-6 shadow-sm animate-pulse">
             <div class="h-6 w-32 bg-slate-200 dark:bg-white/10 rounded mb-6"></div>
             <div class="h-10 w-full bg-slate-200 dark:bg-white/10 rounded-xl mb-8"></div>
@@ -683,7 +697,6 @@
           <section
             class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70 backdrop-blur p-5 sm:p-6 lg:p-8 shadow-sm"
           >
-            <!-- Header Section -->
             <div class="border-b border-black/5 dark:border-white/10 pb-6 mb-6">
               <h2 class="text-lg sm:text-xl font-semibold text-slate-900 dark:text-slate-100">Role Management</h2>
               <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">
@@ -692,7 +705,6 @@
               </p>
             </div>
 
-            <!-- 1. Select User -->
             <div class="mb-8">
               <label
                 for="selectUser"
@@ -731,7 +743,6 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-              <!-- 2. Role Selection (Radio Cards) -->
               <div>
                 <span class="block text-sm font-medium text-slate-900 dark:text-slate-200 mb-3">
                   Tipe Akun (Role)
@@ -782,7 +793,6 @@
                 </div>
               </div>
 
-              <!-- 3. Permissions (Modules + sub-actions) -->
               <div>
                 <span class="block text-sm font-medium text-slate-900 dark:text-slate-200 mb-3">
                   Hak Akses per Modul
@@ -791,16 +801,15 @@
                 <div
                   class="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 p-4 space-y-3"
                 >
-                  {#each MODULE_CONFIG as mod}
+                  {#each moduleList as mod (mod.key)}
                     <div class="rounded-lg border border-slate-200/80 dark:border-white/10 bg-white/70 dark:bg-[#0f0d1b]">
-                      <!-- header modul -->
                       <div class="flex items-center justify-between px-3 py-2">
                         <div class="flex items-center gap-3">
-                          <!-- master checkbox -->
                           <input
                             type="checkbox"
                             class="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-600 dark:bg-neutral-800 dark:border-neutral-600"
-                            checked={moduleAllChecked(mod.key)}
+                            use:syncChecked={moduleAllChecked(mod.key)}
+                            use:indeterminate={moduleSomeChecked(mod.key)}
                             on:change={(e) =>
                               toggleModuleAll(
                                 mod.key,
@@ -847,25 +856,24 @@
                         </button>
                       </div>
 
-                      <!-- sub-permission -->
                       {#if expandedModules[mod.key]}
                         <div class="border-t border-slate-200/80 dark:border-white/10 px-3 py-2">
                           <div class="grid grid-cols-2 gap-x-4 gap-y-2">
-                            {#each ACTION_KEYS as actionKey}
+                            {#each actionList as action (action.key)}
                               <label class="inline-flex items-center gap-2 text-xs text-slate-700 dark:text-slate-200">
                                 <input
                                   type="checkbox"
                                   class="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-600 dark:bg-neutral-800 dark:border-neutral-600"
-                                  checked={roleData.modules[mod.key][actionKey]}
+                                  checked={roleData.modules[mod.key][action.key]}
                                   on:change={(e) =>
                                     handleToggleAction(
                                       mod.key,
-                                      actionKey,
+                                      action.key,
                                       (e.currentTarget as HTMLInputElement).checked
                                     )}
                                   disabled={loading || savingRole}
                                 />
-                                <span>{ACTION_LABELS[actionKey]}</span>
+                                <span>{action.label}</span>
                               </label>
                             {/each}
                           </div>
@@ -877,7 +885,6 @@
               </div>
             </div>
 
-            <!-- Footer Actions -->
             <div
               class="mt-8 pt-6 border-t border-black/5 dark:border-white/10 flex items-center justify-end gap-3"
             >
