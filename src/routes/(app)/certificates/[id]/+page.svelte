@@ -41,7 +41,7 @@
     no_certificate: string;
     project_id: number | '' | null;
     barang_certificate_id: number | '' | null;
-    status: 'Belum' | 'Tidak Aktif' | 'Aktif' | '';
+    status: string;
     date_of_issue: string;
     date_of_expired: string;
     attachments: File[];
@@ -64,13 +64,14 @@
     removed_existing_ids: []
   };
 
-  const statuses = ['Belum', 'Tidak Aktif', 'Aktif'] as const;
+  let statuses: string[] = [];
 
   async function fetchDependencies() {
     try {
       const res: any = await apiFetch('/certificate/getFormDependencies', { auth: true });
       projects = res?.data?.projects ?? res?.projects ?? [];
       barangCertificates = res?.data?.barang_certificates ?? res?.barang_certificates ?? [];
+      statuses = res?.data?.statuses ?? res?.statuses ?? [];
       filteredBarangCertificates = [];
     } catch { /* ignore */ }
   }
@@ -330,7 +331,7 @@
     {form}
     {projects}
     barangOptions={filteredBarangCertificates}
-    statuses={Array.from(statuses)}
+    statuses={statuses}
     handleProjectChange={handleProjectChange}
     allowRemoveAttachment={true}
     onSubmit={handleSubmitUpdate}

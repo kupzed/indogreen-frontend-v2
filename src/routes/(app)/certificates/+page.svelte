@@ -22,7 +22,7 @@
     no_certificate: string;
     project_id: number | '' | null;
     barang_certificate_id: number | '' | null;
-    status: 'Belum' | 'Tidak Aktif' | 'Aktif';
+    status: string;
     date_of_issue: string;
     date_of_expired: string;
     project?: { id: number; name: string } | null;
@@ -30,7 +30,7 @@
     attachments?: AttachmentItem[];
   };
 
-  const statusOptions = ['Belum', 'Tidak Aktif', 'Aktif'] as const;
+  let statusOptions: string[] = [];
 
   // ===== PERMISSIONS =====
   let canCreateCertificate = false;
@@ -160,6 +160,7 @@
       const res: any = await apiFetch('/certificate/getFormDependencies', { auth: true });
       projects = res?.data?.projects ?? res?.projects ?? [];
       barangCertificates = res?.data?.barang_certificates ?? res?.barang_certificates ?? [];
+      statusOptions = res?.data?.statuses ?? res?.statuses ?? [];
       filteredBarangCertificates = [];
     } catch (err) {
       console.error('Failed to fetch dependencies:', err);
@@ -804,7 +805,7 @@
   {form}
   {projects}
   barangOptions={filteredBarangCertificates}
-  statuses={[...statusOptions]}
+  statuses={statusOptions}
   handleProjectChange={(pid: number | '' | null) => {
     if (pid) fetchBarangCertificatesByProject(Number(pid));
     else filteredBarangCertificates = [];
@@ -822,7 +823,7 @@
     {form}
     {projects}
     barangOptions={filteredBarangCertificates}
-    statuses={[...statusOptions]}
+    statuses={statusOptions}
     handleProjectChange={(pid: number | '' | null) => {
       if (pid) fetchBarangCertificatesByProject(Number(pid));
       else filteredBarangCertificates = [];

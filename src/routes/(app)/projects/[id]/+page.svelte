@@ -676,7 +676,7 @@
   let totalCertificates = 0;
   let certificatesInitialized = false;
   let certificateDependenciesInitialized = false;
-  const certificateStatuses = ['Belum','Tidak Aktif','Aktif'] as const;
+  let certificateStatuses: string[] = [];
   let certificateBarangOptions: Option[] = [];
 
   function getCertificateStatusBadgeClasses(status: string) {
@@ -689,13 +689,12 @@
   }
 
   async function fetchCertificateDependencies() {
-    if (!project?.id) return;
     try {
-      const res: any = await apiFetch(`/certificate/getBarangCertificatesByProject/${project.id}`, { auth: true });
-      certificateBarangOptions = res?.data ?? res ?? [];
+      const resDeps: any = await apiFetch('/certificate/getFormDependencies', { auth: true });
+      certificateStatuses = resDeps?.data?.statuses ?? resDeps?.statuses ?? [];
     } catch (err) {
       console.error('Failed to fetch certificate dependencies', err);
-      certificateBarangOptions = [];
+      certificateStatuses = [];
     }
   }
 
@@ -715,12 +714,20 @@
         sort_dir: certificateSortDir,
       })}`;
       const res: any = await apiFetch(url, { auth: true });
-      certificates           = res?.data ?? res?.items ?? res ?? [];
+      certificates = res?.data ?? res?.items ?? res ?? [];
+      if (res?.barang_options) {
+        certificateBarangOptions = Array.isArray(res.barang_options) ? res.barang_options : [];
+      } else if (res?.data?.barang_options) {
+        certificateBarangOptions = Array.isArray(res.data.barang_options) ? res.data.barang_options : [];
+      }
       certificateCurrentPage = res?.pagination?.current_page ?? res?.current_page ?? 1;
       certificateLastPage    = res?.pagination?.last_page   ?? res?.last_page   ?? 1;
       totalCertificates      = res?.pagination?.total       ?? res?.total       ?? (Array.isArray(certificates) ? certificates.length : 0);
-    } catch (err: any) { errorCertificates = err?.message || 'Gagal memuat sertifikat.'; }
-    finally { loadingCertificates = false; }
+    } catch (err: any) { 
+      errorCertificates = err?.message || 'Gagal memuat sertifikat.';
+    } finally { 
+      loadingCertificates = false; 
+    }
   }
 
   function handleCertificateSearchChange() { certificateCurrentPage = 1; fetchCertificates(); }
@@ -1902,7 +1909,7 @@
       form={certificateForm}
       projects={[]}
       barangOptions={certificateBarangOptions}
-      statuses={Array.from(certificateStatuses)}
+      statuses={certificateStatuses}
       allowRemoveAttachment={true}
       showProjectSelect={false}
       onSubmit={handleSubmitCreateCertificate}
@@ -1917,7 +1924,7 @@
         form={certificateForm}
         projects={[]}
         barangOptions={certificateBarangOptions}
-        statuses={Array.from(certificateStatuses)}
+        statuses={certificateStatuses}
         allowRemoveAttachment={true}
         showProjectSelect={false}
         onSubmit={handleSubmitUpdateCertificate}
