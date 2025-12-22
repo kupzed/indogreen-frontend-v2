@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { apiFetch } from '$lib/api';
+  import Drawer from '$lib/components/Drawer.svelte';
+  import FinanceDetail from '$lib/components/detail/FinanceDetail.svelte';
 
   // Interface data sesuai respon backend
   interface FinanceItem {
@@ -9,6 +11,8 @@
     activity_name: string;
     project_name: string;
     value: number;
+    value_formatted?: string;
+    activity?: Record<string, any>;
   }
 
   interface FinanceMeta {
@@ -20,6 +24,8 @@
   let loading = false;
   let reportData: FinanceItem[] = [];
   let meta: FinanceMeta = { total_records: 0, total_value: 0, period: '' };
+  let showDetailDrawer = false;
+  let selectedFinanceItem: FinanceItem | null = null;
 
   let selectedMonth = new Date().getMonth() + 1;
   let selectedYear = new Date().getFullYear();
@@ -65,6 +71,66 @@
   onMount(() => {
     fetchReport();
   });
+
+  function openFinanceDetailDrawer(item: FinanceItem) {
+    selectedFinanceItem = item;
+    showDetailDrawer = true;
+  }
+
+  function closeFinanceDetailDrawer() {
+    showDetailDrawer = false;
+  }
+
+  function handleFinanceValueSaved(event: CustomEvent) {
+    const detail = event.detail ?? {};
+    const activityId = detail.activityId;
+    if (!activityId) return;
+
+    reportData = reportData.map((row) => {
+      if (row?.activity?.id === activityId) {
+        const nextValue = Number(detail.value ?? row.value ?? 0);
+        return {
+          ...row,
+          value: nextValue,
+          value_formatted: detail.value_formatted ?? formatRupiah(nextValue),
+          activity: detail.activity ?? row.activity
+        };
+      }
+      return row;
+    });
+
+    meta = {
+      ...meta,
+      total_value: reportData.reduce((sum, row) => sum + Number(row.value ?? 0), 0)
+    };
+  }
+
+  // --- kunci scroll saat membuka drawer & modal ---
+  function lockBodyScroll(lock: boolean) {
+    const body = document.body;
+    if (!body) return;
+    if (lock) {
+      const scrollY = window.scrollY;
+      body.dataset.scrollY = String(scrollY);
+      body.style.position = 'fixed';
+      body.style.top = `-${scrollY}px`;
+      body.style.left = '0';
+      body.style.right = '0';
+      body.style.overflow = 'hidden';
+      body.style.width = '100%';
+    } else {
+      const y = Number(body.dataset.scrollY || '0');
+      body.style.position = '';
+      body.style.top = '';
+      body.style.left = '';
+      body.style.right = '';
+      body.style.overflow = '';
+      body.style.width = '';
+      delete body.dataset.scrollY;
+      window.scrollTo(0, y);
+    }
+  }
+  $: lockBodyScroll(showDetailDrawer);
 </script>
 
 <div class="space-y-6">
@@ -144,7 +210,21 @@
                     {item.kategori}
                   </span>
                 </td>
-                <td class="whitespace-nowrap px-4 py-3">{item.activity_name}</td>
+                <td class="whitespace-nowrap px-4 py-3">
+                  <button
+                    type="button"
+                    class="text-left font-medium text-violet-700 hover:text-violet-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 dark:text-violet-300 dark:hover:text-violet-100"
+                    on:click={() => openFinanceDetailDrawer(item)}
+                    on:keydown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        openFinanceDetailDrawer(item);
+                      }
+                    }}
+                  >
+                    {item.activity_name}
+                  </button>
+                </td>
                 <td class="whitespace-nowrap px-4 py-3 text-slate-500 dark:text-slate-400">{item.project_name}</td>
                 <td class="whitespace-nowrap px-4 py-3 text-right font-bold text-slate-900 dark:text-slate-100 font-mono">
                   {formatRupiah(item.value)}
@@ -157,3 +237,11 @@
     </div>
   </div>
 </div>
+
+<Drawer
+  bind:show={showDetailDrawer}
+  title="Detail Dokumen Keuangan"
+  on:close={closeFinanceDetailDrawer}
+>
+  <FinanceDetail item={selectedFinanceItem} on:saved={handleFinanceValueSaved} />
+</Drawer>
