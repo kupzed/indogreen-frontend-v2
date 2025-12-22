@@ -80,6 +80,7 @@
     description: '',
     project_id: '',
     kategori: '',
+    value: 0,
     activity_date: '',
     jenis: '',
     mitra_id: null,
@@ -200,7 +201,7 @@
     }
     form = {
       name: '', short_desc: '', description: '', project_id: '', kategori: '',
-      activity_date: '', jenis: '', mitra_id: null, from: '', to: '',
+      value: 0, activity_date: '', jenis: '', mitra_id: null, from: '', to: '',
       attachments: [], attachment_names: [], attachment_descriptions: [],
       existing_attachments: [], removed_existing_ids: []
     };
@@ -218,6 +219,7 @@
       description: a.description ?? '',
       project_id: a.project_id ?? '',
       kategori: a.kategori ?? '',
+      value: a.value ?? 0,
       activity_date: a.activity_date ? new Date(a.activity_date).toISOString().split('T')[0] : '',
       jenis: a.jenis ?? '',
       mitra_id: a.mitra_id ?? '',
@@ -254,6 +256,7 @@
     appendScalar(fd, 'description', form.description);
     appendScalar(fd, 'project_id', form.project_id);
     appendScalar(fd, 'kategori', form.kategori);
+    appendScalar(fd, 'value', form.value);
     appendScalar(fd, 'activity_date', form.activity_date);
     appendScalar(fd, 'jenis', form.jenis);
     appendScalar(fd, 'from', form.from);

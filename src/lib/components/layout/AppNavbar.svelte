@@ -14,6 +14,7 @@
 
   const links: Link[] = [
     { name: 'Dashboard', href: '/dashboard' },
+    { name: 'Finance', href: '/finance' },
     { name: 'Project', href: '/projects', perm: 'project-view' },
     { name: 'Activity', href: '/activities', perm: 'activity-view' },
     { name: 'Mitra', href: '/mitras', perm: 'mitra-view' },

@@ -8,13 +8,15 @@
   export let idPrefix: string = 'activity';
   export let allowRemoveAttachment: boolean = true;
   export let showProjectSelect: boolean = true;
-
+  
+  // Update tipe form untuk menyertakan value
   export let form: {
     name: string;
     short_desc: string;
     description: string;
     project_id: string | number | '';
     kategori: string | '';
+    value: number; // [Baru] Field value
     activity_date: string | '';
     jenis: string | '';
     mitra_id: number | string | '' | null;
@@ -27,17 +29,33 @@
     removed_existing_ids?: number[];
   };
 
+  // [Baru] Definisi kategori keuangan
+  const financeCategories = [
+    'Expense Report', 'Invoice', 'Invoice & FP', 'Payment', 'Faktur Pajak', 'Kasbon'
+  ];
+
+  // [Baru] Reactive: Cek kategori & Reset value jika bukan keuangan
+  $: showValueInput = form.kategori && financeCategories.includes(form.kategori);
+  $: if (!showValueInput) {
+    form.value = 0;
+  }
+
+  // [Baru] Formatter Preview Rupiah
+  $: formattedValuePreview = new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 2
+  }).format(form.value || 0);
+
   const MAX_SHORT_DESC = 80;
   $: shortDescLen = form.short_desc?.length ?? 0;
 
   export let projects: Array<{ id: number; name: string; mitra?: { id: number; nama: string } }> = [];
   export let vendors: Array<{ id: number; nama: string }> = [];
-
   export let activityKategoriList: string[] = [];
   export let activityJenisList: string[] = [];
 
   export let onSubmit: () => Promise<void> | void;
-
   $: selectedProject = projects.find((p) => p.id === Number(form.project_id));
 
   let isSubmitting = false;
@@ -161,23 +179,18 @@
       </div>
 
       <div>
-        <label for="{idPrefix}_short_desc" class="block text-sm font-medium text-slate-900 dark:text-slate-100">Deskripsi Singkat (Max: 80 Karakter)</label>
-        <div class="mt-2">
+        <label for="{idPrefix}_short_desc" class="block text-sm font-medium text-slate-900 dark:text-slate-100">Deskripsi Singkat</label>
+        <div class="mt-1 relative">
           <textarea
-            id="{idPrefix}_short_desc"
+          id="{idPrefix}_short_desc"
             bind:value={form.short_desc}
             on:input={() => (form.short_desc = (form.short_desc ?? '').slice(0, MAX_SHORT_DESC))}
-            rows="2"
-            required
-            maxlength={MAX_SHORT_DESC}
-            placeholder="Masukkan deskripsi singkat"
-            class="mt-1 block w-full rounded-md border border-black/10 dark:border-white/10
+            rows="2" required maxlength={MAX_SHORT_DESC} placeholder="Deskripsi singkat"
+            class="block w-full rounded-md border border-black/10 dark:border-white/10
                  bg-white/80 dark:bg-[#0e0c19]/80 px-3 py-2 text-sm text-slate-900 dark:text-slate-100
                  focus:outline-none focus:ring-2 focus:ring-violet-500"
           ></textarea>
-          <div class="mt-1 text-xs text-gray-500 dark:text-gray-400 text-right">
-            {shortDescLen}/{MAX_SHORT_DESC}
-          </div>
+          <div class="absolute bottom-2 right-2 text-[10px] text-slate-400">{shortDescLen}/{MAX_SHORT_DESC}</div>
         </div>
       </div>
 
@@ -191,6 +204,28 @@
         ></textarea>
       </div>
 
+      {#if showValueInput}
+        <div class="transition-all duration-300 p-4 rounded-lg bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/30">
+          <label for="{idPrefix}_value" class="block text-sm font-medium text-emerald-800 dark:text-emerald-400 mb-1">Nilai / Value (Rp)</label>
+          <input 
+            id="{idPrefix}_value"
+            type="number" 
+            step="0.01"
+            min="0"
+            bind:value={form.value}
+            class="block w-full rounded-md border border-emerald-200 dark:border-emerald-800 
+                   bg-white/80 dark:bg-[#0e0c19]/80 px-3 py-2 text-sm text-slate-900 dark:text-slate-100
+                   focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-slate-400"
+            placeholder="0.00"
+            required={showValueInput}
+          />
+          <div class="mt-2 flex justify-between items-start text-xs">
+            <span class="text-emerald-600 dark:text-emerald-500">Wajib diisi (Angka).</span>
+            <span class="font-semibold text-emerald-700 dark:text-emerald-400">Terbaca: {formattedValuePreview}</span>
+          </div>
+        </div>
+      {/if}
+
       <div>
         <label for="{idPrefix}_activity_date" class="block text-sm font-medium text-slate-900 dark:text-slate-100">Tanggal Aktivitas</label>
         <input
@@ -201,7 +236,6 @@
         />
       </div>
 
-      <!-- Attachment baru -->
       <FileAttachment
         id="{idPrefix}_attachments"
         label="Lampiran"
@@ -212,7 +246,6 @@
         showRemoveButton={allowRemoveAttachment}
       />
 
-      <!-- Attachment lama (saat edit) -->
       {#if form.existing_attachments?.length}
         <div class="mt-3 space-y-3">
           <p class="text-sm font-medium">Lampiran Lama</p>
@@ -221,25 +254,14 @@
               <a class="truncate text-violet-700 dark:text-violet-300 hover:underline" href={att.url} target="_blank" rel="noreferrer">
                 {att.original_name ?? att.name}
               </a>
-              <input
-                type="text" bind:value={att.name} required placeholder="Nama lampiran"
-                class="w-full px-2 py-1 text-sm rounded-md border border-black/10 dark:border-white/10
-                       bg-white/80 dark:bg-[#0e0c19]/80 focus:outline-none focus:ring-2 focus:ring-violet-500"
-              />
-              <input
-                type="text" bind:value={att.description} required placeholder="Deskripsi lampiran"
-                class="w-full px-2 py-1 text-sm rounded-md border border-black/10 dark:border-white/10
-                       bg-white/80 dark:bg-[#0e0c19]/80 focus:outline-none focus:ring-2 focus:ring-violet-500"
-              />
+              <input type="text" bind:value={att.name} required class="w-full px-2 py-1 text-sm rounded-md border border-black/10 dark:border-white/10 bg-white/80 dark:bg-[#0e0c19]/80 focus:outline-none focus:ring-2 focus:ring-violet-500" />
+              <input type="text" bind:value={att.description} required class="w-full px-2 py-1 text-sm rounded-md border border-black/10 dark:border-white/10 bg-white/80 dark:bg-[#0e0c19]/80 focus:outline-none focus:ring-2 focus:ring-violet-500" />
               <div class="flex items-center justify-end gap-3 text-xs">
                 {#if att.size}<span class="text-slate-500 dark:text-slate-400">{formatFileSize(att.size)}</span>{/if}
-                <button
-                  type="button" class="text-rose-600 hover:text-rose-700"
-                  on:click={() => {
+                <button type="button" class="text-rose-600 hover:text-rose-700" on:click={() => {
                     form.removed_existing_ids = [...(form.removed_existing_ids ?? []), att.id];
                     form.existing_attachments = form.existing_attachments!.filter(x => x.id !== att.id);
-                  }}
-                >Hapus</button>
+                  }}>Hapus</button>
               </div>
             </div>
           {/each}
@@ -268,4 +290,10 @@
 
 <style>
   :global(.break-all){ word-break: break-all; overflow-wrap: anywhere; }
+  /* Styling untuk input number */
+  input[type=number]::-webkit-inner-spin-button, 
+  input[type=number]::-webkit-outer-spin-button { 
+    -webkit-appearance: none; margin: 0; 
+  }
+  input[type=number] { appearance: textfield; -moz-appearance: textfield; }
 </style>

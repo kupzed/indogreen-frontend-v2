@@ -3,6 +3,15 @@
 
   export let activity: any = null;
 
+  function formatRupiah(val: number) {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    }).format(val);
+  }
+
   type NormalizedAttachment = {
     url: string;
     filename: string;
@@ -96,7 +105,7 @@
       <div class="px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
         <dt class="text-sm font-medium text-slate-500 dark:text-slate-300">Kategori</dt>
         <dd class="mt-1 text-sm sm:mt-0 sm:col-span-2">
-          <span class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold bg-slate-500/15 text-slate-700 dark:text-slate-300">{activity.kategori}</span>
+          <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold bg-slate-500/20 text-slate-700 dark:text-slate-300">{activity.kategori}</span>
         </dd>
       </div>
 
@@ -119,6 +128,15 @@
         <dt class="text-sm font-medium text-slate-500 dark:text-slate-300">Deskripsi</dt>
         <dd class="mt-1 text-sm text-slate-900 dark:text-slate-100 sm:mt-0 sm:col-span-2">{activity.description}</dd>
       </div>
+
+      {#if activity.value !== null && activity.value !== undefined && Number(activity.value) !== 0}
+        <div class="px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+          <dt class="text-sm font-medium text-slate-500 dark:text-slate-300">Nilai / Value</dt>
+          <dd class="mt-1 text-sm text-slate-900 dark:text-slate-100 sm:mt-0 sm:col-span-2">
+            {formatRupiah(activity.value)}
+          </dd>
+        </div>
+      {/if}
 
       <div class="px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
         <dt class="text-sm font-medium text-slate-500 dark:text-slate-300">Tanggal Aktivitas</dt>

@@ -360,7 +360,7 @@
   let showCreateActivityModal = false;
   let createActivityForm = {
     name: '', short_desc: '', description: '', project_id: '',
-    kategori: '', activity_date: '',
+    kategori: '', value: 0, activity_date: '',
     attachment: null as File | null,
     jenis: '', mitra_id: null as string | null,
     from: '', to: '',
@@ -386,6 +386,7 @@
     description: string;
     project_id: string | number | '';
     kategori: string | '';
+    value: number | 0;
     activity_date: string | '';
     jenis: string | '';
     mitra_id: number | string | '' | null;
@@ -398,8 +399,8 @@
     existing_attachments: ExistingAtt[];
     removed_existing_ids: number[];
   } = {
-    name: '', short_desc: '', description: '', project_id: '', kategori: '', activity_date: '',
-    jenis: '', mitra_id: '', from: '', to: '',
+    name: '', short_desc: '', description: '', project_id: '', kategori: '', 
+    value: 0, activity_date: '', jenis: '', mitra_id: '', from: '', to: '',
     attachments: [], attachment_names: [], attachment_descriptions: [],
     existing_attachments: [], removed_existing_ids: []
   };
@@ -413,7 +414,7 @@
     }
     createActivityForm = {
       name: '', short_desc: '', description: '', project_id: project.id,
-      kategori: '', activity_date: '', attachment: null,
+      kategori: '', value: 0, activity_date: '', attachment: null,
       jenis: project.mitra && project.mitra.is_customer ? 'Customer' : '',
       mitra_id: project.mitra && project.mitra.is_customer ? project.mitra.id : null,
       from: '', to: '',
@@ -433,6 +434,7 @@
       description: activity?.description ?? '',
       project_id: activity?.project_id ?? project?.id ?? '',
       kategori: activity?.kategori ?? '',
+      value: activity?.value ?? 0,
       activity_date: activity?.activity_date ? new Date(activity.activity_date).toISOString().split('T')[0] : '',
       jenis: activity?.jenis ?? '',
       mitra_id: activity?.mitra_id ?? '',
@@ -466,6 +468,7 @@
     appendScalar('description', (form as any).description);
     appendScalar('project_id', (form as any).project_id);
     appendScalar('kategori', (form as any).kategori);
+    appendScalar('value', (form as any).value);
     appendScalar('activity_date', (form as any).activity_date);
     appendScalar('jenis', (form as any).jenis);
     appendScalar('from', (form as any).from);
@@ -1373,7 +1376,7 @@
                                   >
                                     {activity.name}
                                   </a><br>
-                                  <span class="text-xs text-slate-500 dark:text-slate-400">{activity.short_desc}</span>
+                                  <span class="text-xs text-slate-500 dark:text-slate-400">From: {activity.from || '-'} | {activity.short_desc}</span>
                                 </td>
                                 <td class="whitespace-nowrap px-3 py-4 text-sm">
                                   <span class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold bg-slate-500/15 text-slate-700 dark:text-slate-300">{activity.kategori}</span>
