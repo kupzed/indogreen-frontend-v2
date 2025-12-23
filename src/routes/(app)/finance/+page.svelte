@@ -22,6 +22,7 @@
   }
 
   let loading = false;
+  let error = '';
   let reportData: FinanceItem[] = [];
   let meta: FinanceMeta = { total_records: 0, total_value: 0, period: '' };
   let showDetailDrawer = false;
@@ -44,6 +45,7 @@
 
   async function fetchReport() {
     loading = true;
+    error = '';
     try {
       // Gunakan apiFetch dari V2 lib, pass auth: true
       const res = await apiFetch<{ data: FinanceItem[], meta: FinanceMeta }>(
@@ -52,9 +54,9 @@
       );
       reportData = res.data;
       meta = res.meta;
-    } catch (e) {
-      console.error(e);
-      alert('Gagal mengambil laporan keuangan');
+    } catch (err: any) {
+      error = err?.message || 'Gagal memuat Dokumen Keuangan.';
+      console.error(err);
     } finally {
       loading = false;
     }
@@ -198,6 +200,8 @@
         <tbody class="divide-y divide-black/5 dark:divide-white/5 text-sm text-slate-700 dark:text-slate-200">
           {#if loading}
             <tr><td colspan="6" class="px-6 py-8 text-center text-slate-500 dark:text-slate-400">Memuat data...</td></tr>
+          {:else if error}
+            <tr><td colspan="6" class="px-6 py-8 text-center text-red-600 dark:text-red-400 italic">{error}</td></tr>
           {:else if reportData.length === 0}
             <tr><td colspan="6" class="px-6 py-8 text-center text-slate-500 dark:text-slate-400 italic">Tidak ada data keuangan pada periode ini.</td></tr>
           {:else}

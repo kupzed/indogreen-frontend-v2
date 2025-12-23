@@ -2,8 +2,17 @@
   import { createEventDispatcher } from 'svelte';
   import { apiFetch } from '$lib/api';
   import { storageUrl } from '$lib/utils/url';
+  import { userPermissions } from '$lib/stores/permissions';
 
   export let item: any = null;
+
+  // Permission
+  let canUpdateFinance = false;
+
+  $: {
+    const perms = $userPermissions ?? [];
+    canUpdateFinance = perms.includes('finance-update');
+  }
 
   type NormalizedAttachment = {
     url: string;
@@ -95,6 +104,10 @@
   }
 
   async function handleSave() {
+    if (!canUpdateFinance) {
+      console.warn('User lacks finance-update permission');
+      return;
+    }
     if (!activity?.id) return;
     submitting = true;
     errorMessage = '';
@@ -158,16 +171,18 @@
           <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Nilai / Value</p>
           <p class="text-2xl font-semibold text-slate-900 dark:text-white">{formatRupiah(activity.value)}</p>
         </div>
-        <button
-          type="button"
-          class="inline-flex items-center gap-2 rounded-xl border border-black/5 dark:border-white/10 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-700 hover:text-violet-700 dark:text-slate-200 dark:hover:text-violet-200 transition"
-          on:click={() => (showValueEditor = !showValueEditor)}
-        >
-          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-          </svg>
-          {showValueEditor ? 'Batal' : 'Edit'}
-        </button>
+        {#if canUpdateFinance}
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-xl border border-black/5 dark:border-white/10 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-700 hover:text-violet-700 dark:text-slate-200 dark:hover:text-violet-200 transition"
+            on:click={() => (showValueEditor = !showValueEditor)}
+          >
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            {showValueEditor ? 'Batal' : 'Edit'}
+          </button>
+        {/if}
       </header>
 
       {#if showValueEditor}

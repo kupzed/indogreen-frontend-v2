@@ -14,12 +14,12 @@
 
   const links: Link[] = [
     { name: 'Dashboard', href: '/dashboard' },
-    { name: 'Finance', href: '/finance' },
     { name: 'Project', href: '/projects', perm: 'project-view' },
     { name: 'Activity', href: '/activities', perm: 'activity-view' },
     { name: 'Mitra', href: '/mitras', perm: 'mitra-view' },
     { name: 'Barang Sertifikat', href: '/barang-certificates', perm: 'bc-view' },
-    { name: 'Sertifikat', href: '/certificates', perm: 'certificate-view' }
+    { name: 'Sertifikat', href: '/certificates', perm: 'certificate-view' },
+    { name: 'Finance', href: '/finance', perm: 'finance-view' }
   ];
 
   let navEl: HTMLElement;
