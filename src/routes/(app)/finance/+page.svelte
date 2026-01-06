@@ -18,15 +18,24 @@
   interface FinanceMeta {
     total_records: number;
     total_value: number;
-    period: string;
+    period?: string;
+    project?: { id: number; name: string } | null;
+    filters?: Record<string, any>;
   }
+
+  type ReportMode = 'month' | 'project';
 
   let loading = false;
   let error = '';
   let reportData: FinanceItem[] = [];
-  let meta: FinanceMeta = { total_records: 0, total_value: 0, period: '' };
+  let meta: FinanceMeta = { total_records: 0, total_value: 0, period: '', project: null, filters: {} };
   let showDetailDrawer = false;
   let selectedFinanceItem: FinanceItem | null = null;
+  let reportMode: ReportMode = 'month';
+  let projects: Array<{ id: number; name: string }> = [];
+  let selectedProjectId: number | string = '';
+  let projectStartDate = '';
+  let projectEndDate = '';
 
   let selectedMonth = new Date().getMonth() + 1;
   let selectedYear = new Date().getFullYear();
@@ -47,9 +56,38 @@
     loading = true;
     error = '';
     try {
-      // Gunakan apiFetch dari V2 lib, pass auth: true
+      let endpoint = `/finance/monthly-report?month=${selectedMonth}&year=${selectedYear}`;
+
+      if (reportMode === 'project') {
+        const normalizedProjectId =
+          typeof selectedProjectId === 'number'
+            ? selectedProjectId
+            : Number(selectedProjectId || 0);
+
+        if (!normalizedProjectId) {
+          error = 'Silakan pilih project terlebih dahulu.';
+          return;
+        }
+
+        if (projectStartDate && projectEndDate) {
+          const start = new Date(projectStartDate);
+          const end = new Date(projectEndDate);
+          if (start > end) {
+            error = 'Tanggal mulai tidak boleh lebih besar dari tanggal selesai.';
+            return;
+          }
+        }
+
+        const searchParams = new URLSearchParams({
+          project_id: String(normalizedProjectId)
+        });
+        if (projectStartDate) searchParams.append('start_date', projectStartDate);
+        if (projectEndDate) searchParams.append('end_date', projectEndDate);
+        endpoint = `/finance/project-report?${searchParams.toString()}`;
+      }
+
       const res = await apiFetch<{ data: FinanceItem[], meta: FinanceMeta }>(
-        `/finance/monthly-report?month=${selectedMonth}&year=${selectedYear}`, 
+        endpoint,
         { auth: true }
       );
       reportData = res.data;
@@ -57,8 +95,36 @@
     } catch (err: any) {
       error = err?.message || 'Gagal memuat Dokumen Keuangan.';
       console.error(err);
+
     } finally {
       loading = false;
+    }
+  }
+
+  async function fetchProjects() {
+    try {
+      const res = await apiFetch<{ data: Array<{ id: number; name: string }> }>(
+        '/projects?per_page=500',
+        { auth: true }
+      );
+      projects = Array.isArray(res?.data) ? res.data : [];
+    } catch (err) {
+      console.error('Gagal memuat daftar project:', err);
+    }
+  }
+
+  function handleModeChange(mode: ReportMode) {
+    if (mode === reportMode) return;
+    reportMode = mode;
+    error = '';
+    reportData = [];
+    meta = { total_records: 0, total_value: 0, period: '', project: null, filters: {} };
+
+    if (mode === 'month') {
+      selectedProjectId = '';
+      projectStartDate = '';
+      projectEndDate = '';
+      fetchReport();
     }
   }
 
@@ -70,8 +136,13 @@
     }).format(val);
   }
 
+  $: reportSubtitle = reportMode === 'month'
+    ? 'Rekapitulasi aktivitas keuangan per bulan'
+    : 'Rekapitulasi aktivitas keuangan per project';
+
   onMount(() => {
     fetchReport();
+    fetchProjects();
   });
 
   function openFinanceDetailDrawer(item: FinanceItem) {
@@ -136,53 +207,116 @@
 </script>
 
 <div class="space-y-6">
-  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+  <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-6">
     <div>
       <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Dokumen Keuangan</h1>
-      <p class="text-slate-500 dark:text-slate-400 text-sm">Rekapitulasi aktivitas keuangan per bulan</p>
+      <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">{reportSubtitle}</p>
+      
+      <div class="mt-4 inline-flex p-1 rounded-lg bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-white/5">
+        <label class="relative flex cursor-pointer items-center justify-center rounded-md px-3 py-1.5 text-sm font-medium transition-all {reportMode === 'month' ? 'bg-white text-violet-600 shadow-sm dark:bg-violet-600 dark:text-white' : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'}">
+          <input
+            type="radio"
+            name="report-mode"
+            class="sr-only"
+            checked={reportMode === 'month'}
+            on:change={() => handleModeChange('month')}
+          />
+          <span>Per Bulan</span>
+        </label>
+        <label class="relative flex cursor-pointer items-center justify-center rounded-md px-3 py-1.5 text-sm font-medium transition-all {reportMode === 'project' ? 'bg-white text-violet-600 shadow-sm dark:bg-violet-600 dark:text-white' : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'}">
+          <input
+            type="radio"
+            name="report-mode"
+            class="sr-only"
+            checked={reportMode === 'project'}
+            on:change={() => handleModeChange('project')}
+          />
+          <span>Per Project</span>
+        </label>
+      </div>
     </div>
 
-    <div class="flex items-center gap-2 p-1.5 rounded-lg border border-black/5 dark:border-white/10 bg-white/50 dark:bg-[#12101d]/50 backdrop-blur-sm">
-      <select 
-        bind:value={selectedMonth} 
-        on:change={fetchReport} 
-        class="text-sm rounded-md border-0 bg-white/50 dark:bg-[#12101d]/50 backdrop-blur-sm py-1.5 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-violet-500"
-      >
-        {#each months as m}
-          <option value={m.val}>{m.label}</option>
-        {/each}
-      </select>
-      <div class="w-px h-4 bg-slate-300 dark:bg-slate-700"></div>
-      <select 
-        bind:value={selectedYear} 
-        on:change={fetchReport} 
-        class="text-sm rounded-md border-0 bg-white/50 dark:bg-[#12101d]/50 backdrop-blur-sm py-1.5 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-violet-500"
-      >
-        {#each years as y}
-          <option value={y}>{y}</option>
-        {/each}
-      </select>
+    <div class="flex flex-col sm:flex-row gap-2 p-2 rounded-xl border border-slate-200/60 dark:border-white/10 bg-white/60 dark:bg-[#12101d]/50 backdrop-blur-md shadow-sm">
+      {#if reportMode === 'month'}
+        <select 
+          bind:value={selectedMonth} 
+          on:change={fetchReport} 
+          class="h-10 w-full sm:w-40 rounded-lg border-slate-200 dark:border-white/10 bg-white/70 dark:bg-[#1a1728]/80 text-sm text-slate-900 dark:text-slate-100 focus:border-violet-500 focus:ring-violet-500"
+        >
+          {#each months as m}
+            <option value={m.val}>{m.label}</option>
+          {/each}
+        </select>
+
+        <select 
+          bind:value={selectedYear} 
+          on:change={fetchReport} 
+          class="h-10 w-full sm:w-28 rounded-lg border-slate-200 dark:border-white/10 bg-white/70 dark:bg-[#1a1728]/80 text-sm text-slate-900 dark:text-slate-100 focus:border-violet-500 focus:ring-violet-500"
+        >
+          {#each years as y}
+            <option value={y}>{y}</option>
+          {/each}
+        </select>
+
+      {:else}
+        <select 
+          bind:value={selectedProjectId} 
+          on:change={fetchReport} 
+          class="h-10 w-full sm:w-48 rounded-lg border-slate-200 dark:border-white/10 bg-white/70 dark:bg-[#1a1728]/80 text-sm text-slate-900 dark:text-slate-100 focus:border-violet-500 focus:ring-violet-500"
+        >
+          <option value="">Pilih Project</option>
+          {#each projects as project}
+            <option value={project.id}>{project.name}</option>
+          {/each}
+        </select>
+
+        <input 
+          type="date" 
+          bind:value={projectStartDate} 
+          on:change={fetchReport} 
+          class="h-10 w-full sm:w-auto rounded-lg border-slate-200 dark:border-white/10 bg-white/70 dark:bg-[#1a1728]/80 text-sm text-slate-900 dark:text-slate-100 focus:border-violet-500 focus:ring-violet-500" 
+        />
+        
+        <span class="hidden sm:flex items-center text-slate-400">-</span>
+
+        <input 
+          type="date" 
+          bind:value={projectEndDate} 
+          on:change={fetchReport} 
+          class="h-10 w-full sm:w-auto rounded-lg border-slate-200 dark:border-white/10 bg-white/70 dark:bg-[#1a1728]/80 text-sm text-slate-900 dark:text-slate-100 focus:border-violet-500 focus:ring-violet-500" 
+        />
+      {/if}
+
       <button 
         on:click={fetchReport} 
-        class="ml-2 bg-violet-600 hover:bg-violet-700 text-white px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
+        class="h-10 px-5 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm whitespace-nowrap"
       >
         Refresh
       </button>
     </div>
   </div>
 
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+  <!-- <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
     <div class="relative overflow-hidden rounded-2xl border border-black/5 dark:border-white/10 bg-white dark:bg-[#12101d] p-6 shadow-sm">
       <div class="absolute top-0 right-0 p-4 opacity-10">
         <svg class="w-16 h-16 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"></path></svg>
       </div>
-      <p class="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Nilai (Bulan Ini)</p>
+      <p class="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+        {reportMode === 'month' ? 'Total Nilai (Periode Terpilih)' : 'Total Nilai (Project Terpilih)'}
+      </p>
       <h2 class="text-3xl font-bold text-emerald-600 dark:text-emerald-400 mt-2 font-mono">
         {formatRupiah(meta.total_value || 0)}
       </h2>
-      <p class="text-xs text-slate-400 mt-2">Dari total {meta.total_records} transaksi</p>
+      <p class="text-xs text-slate-400 mt-2">
+        {reportMode === 'month' && meta?.period
+          ? `Periode ${meta.period}`
+          : reportMode === 'project' && meta?.project?.name
+            ? `Project ${meta.project.name}`
+            : ''}
+      </p>
+      <p class="text-xs text-slate-400">Dari total {meta.total_records} transaksi</p>
     </div>
-  </div>
+  </div> -->
 
   <div class="bg-white/70 dark:bg-[#12101d]/70 backdrop-blur shadow-sm">
     <div class="overflow-x-auto no-scrollbar">
