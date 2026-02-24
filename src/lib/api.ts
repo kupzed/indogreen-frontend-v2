@@ -1,7 +1,9 @@
 // Simple API helper for calling the Laravel backend
 // - Reads base URL from PUBLIC_API_BASE or VITE_API_BASE, with a sensible local default
 // - Manages JWT storage in localStorage
+// - Silent token refresh on 401 (Unauthorized)
 import { env as publicEnv } from '$env/dynamic/public';
+import { clearUser } from './stores/user';
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
@@ -40,6 +42,8 @@ export interface ApiFetchOptions {
 	body?: ApiBody;
 	headers?: Record<string, string>;
 	auth?: boolean;
+	/** @internal Digunakan oleh retry logic — jangan diset manual */
+	_isRetry?: boolean;
 }
 
 /** Try to read "message" safely from an unknown error payload */
@@ -77,6 +81,48 @@ async function redirectToLogin() {
 	}
 }
 
+// ─── Silent token refresh ─────────────────────────────────────────
+let refreshPromise: Promise<string | null> | null = null;
+
+/** Panggil POST /auth/refresh dengan token yang ada */
+async function doRefresh(): Promise<string | null> {
+	const token = getToken();
+	if (!token) return null;
+	try {
+		const res = await fetch(`${API_BASE}/auth/refresh`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Accept: 'application/json',
+				Authorization: `Bearer ${token}`
+			}
+		});
+		if (!res.ok) return null;
+		const data = await res.json();
+		const newToken: string | undefined = data.access_token;
+		if (newToken) {
+			setToken(newToken);
+			return newToken;
+		}
+		return null;
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Deduplicate concurrent refresh calls — jika refresh sedang berjalan,
+ * semua caller akan menunggu promise yang sama.
+ */
+function tryRefresh(): Promise<string | null> {
+	if (!refreshPromise) {
+		refreshPromise = doRefresh().finally(() => {
+			refreshPromise = null;
+		});
+	}
+	return refreshPromise;
+}
+
 /**
  * Fetch wrapper with JSON support and optional auth.
  * - Injects Authorization when options.auth = true
@@ -87,7 +133,7 @@ export async function apiFetch<T = unknown>(
 	path: string,
 	options: ApiFetchOptions = {}
 ): Promise<T> {
-	const { method = 'GET', body, headers = {}, auth = false } = options;
+	const { method = 'GET', body, headers = {}, auth = false, _isRetry = false } = options;
 
 	const url = path.startsWith('http')
 		? path
@@ -141,13 +187,18 @@ export async function apiFetch<T = unknown>(
 	}
 
 	if (!response.ok) {
-		// HANYA redirect kalau request ini memang pakai auth: true
+		// HANYA handle 401 kalau request ini memang pakai auth: true
 		if (auth && isUnauthorized(response.status, payload)) {
-			try {
-				setToken(null);
-			} catch (err: unknown) {
-				console.error('Failed to clear token:', err);
+			// Coba refresh token dulu sebelum redirect (kecuali sudah retry)
+			if (!_isRetry) {
+				const newToken = await tryRefresh();
+				if (newToken) {
+					// Retry request asli dengan token baru
+					return apiFetch<T>(path, { ...options, _isRetry: true });
+				}
 			}
+			// Refresh gagal atau sudah retry → bersihkan state & redirect
+			clearUser();
 			await redirectToLogin();
 			// lempar error khusus supaya UI tidak menampilkan pesan "Unauthenticated"
 			throw new Error('AUTH_REDIRECT');

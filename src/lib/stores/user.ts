@@ -12,3 +12,11 @@ export const currentUser = writable<User | null>(null);
 export const setUser = (u: User | null) => currentUser.set(u);
 export const patchUser = (partial: Partial<User>) =>
 	currentUser.update((u) => (u ? { ...u, ...partial } : u));
+
+/** Hapus data user dari store & localStorage (dipanggil saat refresh token gagal) */
+export const clearUser = () => {
+	currentUser.set(null);
+	if (typeof window !== 'undefined') {
+		localStorage.removeItem('auth_token');
+	}
+};
