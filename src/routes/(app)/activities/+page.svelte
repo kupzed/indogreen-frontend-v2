@@ -121,37 +121,34 @@
 			})}`;
 			const res: any = await apiFetch(url, { auth: true });
 			activities = res?.data ?? res?.items ?? res ?? [];
-			currentPage = res?.pagination?.current_page ?? res?.current_page ?? 1;
-			lastPage = res?.pagination?.last_page ?? res?.last_page ?? 1;
+			currentPage = res?.meta?.current_page ?? res?.pagination?.current_page ?? res?.current_page ?? 1;
+			lastPage = res?.meta?.last_page ?? res?.pagination?.last_page ?? res?.last_page ?? 1;
 			totalActivities =
-				res?.pagination?.total ?? res?.total ?? (Array.isArray(activities) ? activities.length : 0);
+				res?.meta?.total ?? res?.pagination?.total ?? res?.total ?? (Array.isArray(activities) ? activities.length : 0);
+
+			if (res?.form_dependencies) {
+				const dep = res.form_dependencies;
+				projects = dep.projects || [];
+				vendors = dep.vendors || [];
+				activityKategoriList = Array.isArray(dep.kategori_list) ? dep.kategori_list : [];
+				activityJenisList = Array.isArray(dep.jenis_list) ? dep.jenis_list : [];
+				customers = dep.customers || [];
+				
+				if (Array.isArray(projects)) {
+					const mitraMap = new Map();
+					vendors.forEach((v: any) => mitraMap.set(v.id, v));
+					customers.forEach((c: any) => mitraMap.set(c.id, c));
+					projects = projects.map((p: any) => ({
+						...p,
+						mitra: p.mitra || (p.mitra_id ? mitraMap.get(p.mitra_id) : (p.customer_id ? mitraMap.get(p.customer_id) : undefined))
+					}));
+				}
+			}
 		} catch (err: any) {
 			error = err?.message || 'Gagal memuat aktivitas.';
 			console.error(err);
 		} finally {
 			loading = false;
-		}
-	}
-
-	async function fetchFormDependencies() {
-		try {
-			const dep: any = await apiFetch('/activity/getFormDependencies', { auth: true });
-			projects = dep?.projects ?? dep?.data?.projects ?? [];
-			vendors = dep?.vendors ?? dep?.data?.vendors ?? [];
-
-			activityKategoriList = Array.isArray(dep.kategori_list) ? dep.kategori_list : [];
-
-			activityJenisList = Array.isArray(dep.jenis_list) ? dep.jenis_list : [];
-
-			try {
-				const cust: any = await apiFetch('/mitra/customers', { auth: true });
-				customers = cust?.data ?? cust ?? [];
-			} catch (e) {
-				customers = [];
-				console.warn('Fetch customers (optional) gagal:', e);
-			}
-		} catch (err) {
-			console.error('Failed to fetch dependencies:', err);
 		}
 	}
 
@@ -161,7 +158,6 @@
 			return;
 		}
 		fetchActivities();
-		fetchFormDependencies();
 	});
 
 	function handleFilterOrSearch() {

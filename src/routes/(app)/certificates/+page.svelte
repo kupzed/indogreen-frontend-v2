@@ -165,17 +165,7 @@
 	].filter(Boolean) as Array<{ key: 'status' | 'date' | 'sort' | 'search'; label: string }>;
 
 	// ===== API =====
-	async function fetchDependencies() {
-		try {
-			const res: any = await apiFetch('/certificate/getFormDependencies', { auth: true });
-			projects = res?.data?.projects ?? res?.projects ?? [];
-			barangCertificates = res?.data?.barang_certificates ?? res?.barang_certificates ?? [];
-			statusOptions = res?.data?.statuses ?? res?.statuses ?? [];
-			filteredBarangCertificates = [];
-		} catch (err) {
-			console.error('Failed to fetch dependencies:', err);
-		}
-	}
+	// Dependencies are fetched alongside list via form_dependencies
 
 	async function fetchBarangCertificatesByProject(projectId: number) {
 		if (!projectId) {
@@ -208,11 +198,26 @@
 				sort_dir: sortDir
 			})}`;
 			const res: any = await apiFetch(url, { auth: true });
-			items = res?.data ?? res?.items ?? res ?? [];
-			currentPage = res?.pagination?.current_page ?? res?.current_page ?? 1;
-			lastPage = res?.pagination?.last_page ?? res?.last_page ?? 1;
+			
+			const root = res || {};
+			items = root.data ?? root.items ?? [];
+			
+			const formDeps = root.form_dependencies ?? root.meta?.form_dependencies ?? {};
+			if (formDeps.projects && projects.length === 0) {
+				projects = formDeps.projects;
+			}
+			if (formDeps.barang_certificates && barangCertificates.length === 0) {
+				barangCertificates = formDeps.barang_certificates;
+			}
+			if (formDeps.statuses && statusOptions.length === 0) {
+				statusOptions = formDeps.statuses;
+			}
+
+			const pag = root.meta ?? root.pagination ?? {};
+			currentPage = pag.current_page ?? root.current_page ?? 1;
+			lastPage = pag.last_page ?? root.last_page ?? 1;
 			totalItems =
-				res?.pagination?.total ?? res?.total ?? (Array.isArray(items) ? items.length : 0);
+				pag.total ?? root.total ?? (Array.isArray(items) ? items.length : 0);
 		} catch (err: any) {
 			error = err?.message || 'Gagal memuat data.';
 		} finally {
@@ -225,7 +230,6 @@
 			goto('/auth/login');
 			return;
 		}
-		fetchDependencies();
 		fetchList();
 	});
 

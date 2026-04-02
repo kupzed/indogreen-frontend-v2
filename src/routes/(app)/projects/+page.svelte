@@ -154,30 +154,24 @@
 
 			const res: any = await apiFetch(url, { auth: true });
 			projects = res?.data ?? res?.items ?? res?.projects ?? res ?? [];
-			currentPage = res?.pagination?.current_page ?? res?.current_page ?? 1;
-			lastPage = res?.pagination?.last_page ?? res?.last_page ?? 1;
+			currentPage = res?.meta?.current_page ?? res?.pagination?.current_page ?? res?.current_page ?? 1;
+			lastPage = res?.meta?.last_page ?? res?.pagination?.last_page ?? res?.last_page ?? 1;
 			totalProjects =
-				res?.pagination?.total ?? res?.total ?? (Array.isArray(projects) ? projects.length : 0);
+				res?.meta?.total ?? res?.pagination?.total ?? res?.total ?? (Array.isArray(projects) ? projects.length : 0);
+
+			if (res?.form_dependencies) {
+				const dep = res.form_dependencies;
+				customers = Array.isArray(dep.customers) ? dep.customers : [];
+				projectStatuses = Array.isArray(dep.project_status_list) ? dep.project_status_list : [];
+				projectKategoris = Array.isArray(dep.project_kategori_list)
+					? dep.project_kategori_list
+					: [];
+			}
 		} catch (err: any) {
 			error = err?.message || 'Gagal memuat project.';
 			console.error(err);
 		} finally {
 			loading = false;
-		}
-	}
-
-	async function fetchProjectFormDependencies() {
-		try {
-			const res: any = await apiFetch('/projects/getFormDependencies', { auth: true });
-			const root = res?.data ?? res ?? {};
-
-			customers = Array.isArray(root.customers) ? root.customers : [];
-			projectStatuses = Array.isArray(root.project_status_list) ? root.project_status_list : [];
-			projectKategoris = Array.isArray(root.project_kategori_list)
-				? root.project_kategori_list
-				: [];
-		} catch (err) {
-			console.error('Failed to fetch project form dependencies:', err);
 		}
 	}
 
@@ -187,7 +181,6 @@
 			return;
 		}
 		fetchProjects();
-		fetchProjectFormDependencies();
 	});
 
 	let searchTimer: ReturnType<typeof setTimeout>;

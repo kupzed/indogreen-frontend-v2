@@ -103,10 +103,17 @@
 			const res: any = await apiFetch(`/projects/${projectId}`, { auth: true });
 			const data = res?.data ?? res ?? {};
 			project = data.project ?? data;
-			projectStatuses = Array.isArray(data.project_status_list) ? data.project_status_list : [];
-			projectKategoris = Array.isArray(data.project_kategori_list)
-				? data.project_kategori_list
-				: [];
+			
+			if (res?.form_dependencies) {
+				projectStatuses = Array.isArray(res.form_dependencies.project_status_list) ? res.form_dependencies.project_status_list : [];
+				projectKategoris = Array.isArray(res.form_dependencies.project_kategori_list) ? res.form_dependencies.project_kategori_list : [];
+				if (!customers?.length) {
+					customers = Array.isArray(res.form_dependencies.customers) ? res.form_dependencies.customers : [];
+				}
+			} else {
+				projectStatuses = Array.isArray(data.project_status_list) ? data.project_status_list : [];
+				projectKategoris = Array.isArray(data.project_kategori_list) ? data.project_kategori_list : [];
+			}
 
 			// Sinkronkan form edit awal
 			editProjectForm = {
@@ -273,7 +280,7 @@
 
 			activities = Array.isArray(items) ? items : [];
 
-			const pagination = root.pagination ?? {};
+			const pagination = root.meta ?? root.pagination ?? {};
 			activityCurrentPage = pagination.current_page ?? root.current_page ?? 1;
 			activityLastPage = pagination.last_page ?? root.last_page ?? 1;
 			totalActivities =
@@ -281,6 +288,16 @@
 
 			// vendor unik untuk dropdown "Vendor"
 			projectVendorOptions = Array.isArray(root.vendor_options) ? root.vendor_options : [];
+
+			if (root.form_dependencies) {
+				const dep = root.form_dependencies;
+				vendors = Array.isArray(dep.vendors) ? dep.vendors : [];
+				if (Array.isArray(dep.customers) && dep.customers.length > 0) {
+					customers = dep.customers;
+				}
+				activityKategoriList = Array.isArray(dep.kategori_list) ? dep.kategori_list : [];
+				activityJenisList = Array.isArray(dep.jenis_list) ? dep.jenis_list : [];
+			}
 		} catch (err: any) {
 			errorActivities = err?.message || 'Gagal memuat aktivitas.';
 		} finally {
@@ -331,24 +348,7 @@
 	}
 
 	// ===== Dependencies untuk form =====
-	async function fetchFormDependencies() {
-		try {
-			const res: any = await apiFetch('/activity/getFormDependencies', { auth: true });
 
-			const root = res?.data ?? res ?? {};
-
-			// vendors & customers untuk form
-			vendors = Array.isArray(root.vendors) ? root.vendors : [];
-			customers = Array.isArray(root.customers) ? root.customers : [];
-
-			// list kategori & jenis dari backend
-			activityKategoriList = Array.isArray(root.kategori_list) ? root.kategori_list : [];
-
-			activityJenisList = Array.isArray(root.jenis_list) ? root.jenis_list : [];
-		} catch (err) {
-			console.error('Failed to fetch form dependencies:', err);
-		}
-	}
 
 	onMount(() => {
 		if (!getToken()) {
@@ -356,8 +356,16 @@
 			return;
 		}
 		fetchProjectDetails();
-		fetchActivities();
-		fetchFormDependencies();
+		
+		if (activeTab === 'activity') {
+			activitiesInitialized = true;
+			fetchActivities();
+		}
+		if (activeTab === 'certificates') {
+			certificatesInitialized = true;
+			fetchCertificates();
+		}
+
 		document.addEventListener('click', handleClickOutside);
 		return () => document.removeEventListener('click', handleClickOutside);
 	});
@@ -825,16 +833,6 @@
 		}
 	}
 
-	async function fetchCertificateDependencies() {
-		try {
-			const resDeps: any = await apiFetch('/certificate/getFormDependencies', { auth: true });
-			certificateStatuses = resDeps?.data?.statuses ?? resDeps?.statuses ?? [];
-		} catch (err) {
-			console.error('Failed to fetch certificate dependencies', err);
-			certificateStatuses = [];
-		}
-	}
-
 	async function fetchCertificates() {
 		if (!project?.id) return;
 		loadingCertificates = true;
@@ -852,20 +850,24 @@
 				sort_dir: certificateSortDir
 			})}`;
 			const res: any = await apiFetch(url, { auth: true });
-			certificates = res?.data ?? res?.items ?? res ?? [];
-			if (res?.barang_options) {
-				certificateBarangOptions = Array.isArray(res.barang_options) ? res.barang_options : [];
-			} else if (res?.data?.barang_options) {
-				certificateBarangOptions = Array.isArray(res.data.barang_options)
-					? res.data.barang_options
-					: [];
+			
+			const root = res || {};
+			certificates = root.data ?? root.items ?? [];
+			
+			const formDeps = root.form_dependencies ?? root.meta?.form_dependencies ?? {};
+			if (formDeps.barang_options) {
+				certificateBarangOptions = Array.isArray(formDeps.barang_options) ? formDeps.barang_options : [];
 			}
-			certificateCurrentPage = res?.pagination?.current_page ?? res?.current_page ?? 1;
-			certificateLastPage = res?.pagination?.last_page ?? res?.last_page ?? 1;
+			if (formDeps.statuses && !certificateDependenciesInitialized) {
+				certificateStatuses = formDeps.statuses;
+				certificateDependenciesInitialized = true;
+			}
+
+			const pag = root.meta ?? root.pagination ?? {};
+			certificateCurrentPage = pag.current_page ?? root.current_page ?? 1;
+			certificateLastPage = pag.last_page ?? root.last_page ?? 1;
 			totalCertificates =
-				res?.pagination?.total ??
-				res?.total ??
-				(Array.isArray(certificates) ? certificates.length : 0);
+				pag.total ?? root.total ?? (Array.isArray(certificates) ? certificates.length : 0);
 		} catch (err: any) {
 			errorCertificates = err?.message || 'Gagal memuat sertifikat.';
 		} finally {
@@ -920,10 +922,6 @@
 	$: if (activeTab === 'certificates' && project?.id && !certificatesInitialized) {
 		certificatesInitialized = true;
 		fetchCertificates();
-		if (!certificateDependenciesInitialized) {
-			certificateDependenciesInitialized = true;
-			fetchCertificateDependencies();
-		}
 	}
 
 	// Certificate form state

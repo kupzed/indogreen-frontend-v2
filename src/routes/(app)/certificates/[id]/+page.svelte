@@ -66,15 +66,7 @@
 
   let statuses: string[] = [];
 
-  async function fetchDependencies() {
-    try {
-      const res: any = await apiFetch('/certificate/getFormDependencies', { auth: true });
-      projects = res?.data?.projects ?? res?.projects ?? [];
-      barangCertificates = res?.data?.barang_certificates ?? res?.barang_certificates ?? [];
-      statuses = res?.data?.statuses ?? res?.statuses ?? [];
-      filteredBarangCertificates = [];
-    } catch { /* ignore */ }
-  }
+  // Dependencies are fetched alongside detail via form_dependencies
 
   async function fetchBarangCertificatesByProject(projectId: number) {
     if (!projectId) { filteredBarangCertificates = []; return; }
@@ -129,7 +121,19 @@
     id = $page.params.id;
     try {
       const res: any = await apiFetch(`/certificates/${id}`, { auth: true });
-      item = res?.data ?? res;
+      const root = res || {};
+      item = root.data ?? root;
+      
+      const formDeps = root.form_dependencies ?? root.meta?.form_dependencies ?? {};
+      if (formDeps.projects && projects.length === 0) {
+        projects = formDeps.projects;
+      }
+      if (formDeps.barang_certificates && barangCertificates.length === 0) {
+        barangCertificates = formDeps.barang_certificates;
+      }
+      if (formDeps.statuses && statuses.length === 0) {
+        statuses = formDeps.statuses;
+      }
 
       form = {
         name: item?.name ?? '',
@@ -209,7 +213,6 @@
 
   onMount(() => {
     if (!getToken()) { goto('/auth/login'); return; }
-    fetchDependencies();
     fetchDetail();
   });
 

@@ -121,38 +121,7 @@
     return fd;
   }
 
-  async function fetchDependencies() {
-    try {
-      const res: any = await apiFetch('/activity/getFormDependencies', { auth: true });
-      projects = res?.projects ?? res?.data?.projects ?? [];
-      vendors  = res?.vendors  ?? res?.data?.vendors  ?? [];
 
-      activityKategoriList = Array.isArray(res.kategori_list)
-        ? res.kategori_list
-        : [];
-
-      activityJenisList = Array.isArray(res.jenis_list)
-        ? res.jenis_list
-        : [];
-
-      // optional customers
-      try {
-        const c: any = await apiFetch('/mitra/customers', { auth: true });
-        customers = c?.data ?? c ?? [];
-      } catch { customers = []; }
-
-      // enrich project.mitra bila perlu
-      const mitraMap = new Map<any, any>();
-      vendors?.forEach((v: any) => mitraMap.set(v.id, v));
-      customers?.forEach((m: any) => mitraMap.set(m.id, m));
-      projects = projects.map((p: any) => ({
-        ...p,
-        mitra: p.mitra || (p.mitra_id ? mitraMap.get(p.mitra_id) : (p.customer_id ? mitraMap.get(p.customer_id) : undefined))
-      }));
-    } catch (e) {
-      // ignore
-    }
-  }
 
   async function fetchDetail() {
     loading = true; error = '';
@@ -165,6 +134,27 @@
     try {
       const res: any = await apiFetch(`/activities/${activityId}`, { auth: true });
       activity = res?.data ?? res;
+      
+      // extract deps
+      if (res?.form_dependencies) {
+        const dep = res.form_dependencies;
+        projects = dep.projects || [];
+        vendors = dep.vendors || [];
+        activityKategoriList = Array.isArray(dep.kategori_list) ? dep.kategori_list : [];
+        activityJenisList = Array.isArray(dep.jenis_list) ? dep.jenis_list : [];
+        customers = dep.customers || [];
+        
+        if (Array.isArray(projects)) {
+          const mitraMap = new Map();
+          vendors.forEach((v: any) => mitraMap.set(v.id, v));
+          customers.forEach((c: any) => mitraMap.set(c.id, c));
+          projects = projects.map((p: any) => ({
+            ...p,
+            mitra: p.mitra || (p.mitra_id ? mitraMap.get(p.mitra_id) : (p.customer_id ? mitraMap.get(p.customer_id) : undefined))
+          }));
+        }
+      }
+
       form = {
         name: activity?.name ?? '',
         short_desc: activity?.short_desc ?? '',
@@ -263,7 +253,6 @@
 
   onMount(() => {
     if (!getToken()) { goto('/auth/login'); return; }
-    fetchDependencies();
     fetchDetail();
   });
 
