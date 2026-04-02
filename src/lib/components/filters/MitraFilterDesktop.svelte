@@ -2,7 +2,7 @@
   import FilterSection from './FilterSection.svelte';
   import { createEventDispatcher } from 'svelte';
 
-  export let kategoriOptions: string[] = [];
+  export let kategoriOptions: Array<{value: string, label: string}> = [];
   export let kategoriValue = '';
   export let sortDir: 'desc'|'asc' = 'desc'; // ⬅️ NEW
 
@@ -45,11 +45,11 @@
       {#each kategoriOptions as k}
         <button
           type="button"
-          on:click={() => update('kategori', kategoriValue===k ? '' : k)}
+          on:click={() => update('kategori', kategoriValue===k.value ? '' : k.value)}
           class="px-3 py-1.5 rounded-full text-xs border border-black/5 dark:border-white/10
                  hover:bg-black/5 dark:hover:bg-white/5
-                 {kategoriValue===k ? 'bg-violet-500/15 text-violet-700 dark:text-violet-300' : 'text-slate-700 dark:text-slate-200'}">
-          {cap(k)}
+                 {kategoriValue===k.value ? 'bg-violet-500/15 text-violet-700 dark:text-violet-300' : 'text-slate-700 dark:text-slate-200'}">
+          {k.label}
         </button>
       {/each}
     </div>

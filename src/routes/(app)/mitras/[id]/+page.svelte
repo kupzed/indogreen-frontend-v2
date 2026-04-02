@@ -179,13 +179,13 @@
 	}
 
 	async function fetchBarangCertificates() {
-		if (!mitra?.id) return;
+		if (!mitraId) return;
 		bcLoading = true;
 		bcError = '';
 		try {
 			const url = `/barang-certificates?${qs({
 				search: bcSearch,
-				mitra_id: mitra.id,
+				mitra_id: mitraId,
 				page: bcCurrentPage,
 				per_page: perPage,
 				sort_by: bcSortBy,
@@ -193,10 +193,10 @@
 			})}`;
 			const res: any = await apiFetch(url, { auth: true });
 			bcItems = res?.data ?? res?.items ?? res ?? [];
-			bcCurrentPage = res?.pagination?.current_page ?? res?.current_page ?? 1;
-			bcLastPage = res?.pagination?.last_page ?? res?.last_page ?? 1;
+			bcCurrentPage = res?.meta?.current_page ?? res?.pagination?.current_page ?? res?.current_page ?? 1;
+			bcLastPage = res?.meta?.last_page ?? res?.pagination?.last_page ?? res?.last_page ?? 1;
 			bcTotalItems =
-				res?.pagination?.total ?? res?.total ?? (Array.isArray(bcItems) ? bcItems.length : 0);
+				res?.meta?.total ?? res?.pagination?.total ?? res?.total ?? (Array.isArray(bcItems) ? bcItems.length : 0);
 		} catch (err: any) {
 			bcError = err?.message || 'Gagal memuat data.';
 			console.error(err);
@@ -332,9 +332,11 @@
 		}
 		mitraId = $page.params.id ?? null;
 		fetchMitraDetails();
+		fetchBarangCertificates();
+		bcInitialized = true;
 	});
 
-	$: if (activeTab === 'barang' && mitra?.id && !bcInitialized) {
+	$: if (activeTab === 'barang' && !bcInitialized) {
 		bcInitialized = true;
 		fetchBarangCertificates();
 	}

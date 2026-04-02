@@ -30,12 +30,7 @@
     name: '', no_seri: '', mitra_id: ''
   };
 
-  async function fetchDependencies() {
-    try {
-      const res: any = await apiFetch('/barang-certificate/getFormDependencies', { auth: true });
-      mitras = res?.data?.mitras ?? res?.mitras ?? [];
-    } catch { /* ignore */ }
-  }
+
 
   async function fetchDetail() {
     loading = true; error = '';
@@ -43,6 +38,7 @@
     try {
       const res: any = await apiFetch(`/barang-certificates/${id}`, { auth: true });
       item = res?.data ?? res;
+      mitras = res?.form_dependencies?.mitras ?? mitras;
     } catch (e: any) {
       error = e?.message || 'Gagal memuat detail.';
     } finally {
@@ -93,7 +89,6 @@
 
   onMount(() => {
     if (!getToken()) { goto('/auth/login'); return; }
-    fetchDependencies();
     fetchDetail();
   });
   

@@ -98,14 +98,7 @@
 		return mitras.find((m) => m.id === id)?.nama ?? '';
 	}
 
-	async function fetchDependencies() {
-		try {
-			const res: any = await apiFetch('/barang-certificate/getFormDependencies', { auth: true });
-			mitras = res?.data?.mitras ?? res?.mitras ?? res ?? [];
-		} catch (err) {
-			console.error('Failed to fetch dependencies:', err);
-		}
-	}
+
 
 	async function fetchList() {
 		loading = true;
@@ -122,10 +115,11 @@
 
 			const res: any = await apiFetch(url, { auth: true });
 			items = res?.data ?? res?.items ?? res ?? [];
-			currentPage = res?.pagination?.current_page ?? res?.current_page ?? 1;
-			lastPage = res?.pagination?.last_page ?? res?.last_page ?? 1;
+			mitras = res?.form_dependencies?.mitras ?? mitras;
+			currentPage = res?.meta?.current_page ?? res?.pagination?.current_page ?? res?.current_page ?? 1;
+			lastPage = res?.meta?.last_page ?? res?.pagination?.last_page ?? res?.last_page ?? 1;
 			totalItems =
-				res?.pagination?.total ?? res?.total ?? (Array.isArray(items) ? items.length : 0);
+				res?.meta?.total ?? res?.pagination?.total ?? res?.total ?? (Array.isArray(items) ? items.length : 0);
 		} catch (err: any) {
 			error = err?.message || 'Gagal memuat data.';
 			console.error(err);
@@ -139,7 +133,6 @@
 			goto('/auth/login');
 			return;
 		}
-		fetchDependencies();
 		fetchList();
 	});
 

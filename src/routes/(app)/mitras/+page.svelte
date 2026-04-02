@@ -112,7 +112,7 @@
 	};
 
 	// options
-	const mitraKategoriOptions = ['pribadi', 'perusahaan', 'customer', 'vendor'];
+	let mitraKategoriOptions: Array<{value: string, label: string}> = [];
 
 	// ====== HELPERS ======
 	function qs(obj: Record<string, any>) {
@@ -138,10 +138,14 @@
 
 			const res: any = await apiFetch(url, { auth: true });
 			mitras = res?.data ?? res?.items ?? res?.mitras ?? res ?? [];
-			currentPage = res?.pagination?.current_page ?? res?.current_page ?? 1;
-			lastPage = res?.pagination?.last_page ?? res?.last_page ?? 1;
-			totalMitras =
-				res?.pagination?.total ?? res?.total ?? (Array.isArray(mitras) ? mitras.length : 0);
+			const meta = res?.meta || res?.pagination || res || {};
+			currentPage = meta.current_page ?? 1;
+			lastPage = meta.last_page ?? 1;
+			totalMitras = meta.total ?? (Array.isArray(mitras) ? mitras.length : 0);
+
+			if (res?.form_dependencies?.kategori_options) {
+				mitraKategoriOptions = res.form_dependencies.kategori_options;
+			}
 		} catch (err: any) {
 			error = err?.message || 'Gagal memuat mitra.';
 			console.error(err);
