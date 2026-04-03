@@ -26,7 +26,7 @@
       activityId: number;
       value: number;
       value_formatted?: string;
-      activity: any;
+      item: any;
     };
   }>();
 
@@ -92,8 +92,8 @@
   let successMessage = '';
   let lastActivityId: number | null = null;
 
-  $: activity = item?.activity ?? null;
-  $: attachments = normalizeAttachments(activity?.attachments ?? activity?.attachment);
+  $: activity = item;
+  $: attachments = normalizeAttachments(activity?.attachments);
 
   $: if (activity?.id && activity.id !== lastActivityId) {
     lastActivityId = activity.id;
@@ -118,8 +118,8 @@
         status: string;
         meta: { value_formatted: string };
         data: any;
-      }>(`/finance/${activity.id}/value`, {
-        method: 'PATCH',
+      }>(`/finance/${activity.id}`, {
+        method: 'PUT',
         body: payload,
         auth: true
       });
@@ -131,7 +131,7 @@
         activityId: updated.id,
         value: updated.value,
         value_formatted: data.meta?.value_formatted,
-        activity: updated
+        item: updated
       });
     } catch (error: any) {
       errorMessage = error?.message ?? 'Gagal memperbarui nilai';
@@ -188,7 +188,7 @@
       {#if showValueEditor}
         <div class="space-y-4 rounded-2xl border border-dashed border-black/10 dark:border-white/10 p-4 bg-white/60 dark:bg-white/5">
           <label class="text-sm font-medium text-slate-700 dark:text-slate-200" for="value-input">
-            Nilai Activity (IDR)
+            (IDR)
           </label>
           <div class="flex flex-col gap-3 sm:flex-row">
             <input
@@ -265,7 +265,7 @@
       </div>
       {#if attachments.length}
         <ul class="mt-4 border border-black/10 dark:border-white/10 divide-y divide-black/5 dark:divide-white/10">
-          {#each attachments as file}
+          {#each attachments as file (file.url)}
             <li class="bg-white/80 dark:bg-[#0e0c19]/60 px-4 py-3">
               <div class="flex items-start gap-3">
                 <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" class="w-5 h-5 shrink-0 text-slate-500 mt-0.5">

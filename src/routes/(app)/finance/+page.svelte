@@ -4,15 +4,17 @@
   import Drawer from '$lib/components/Drawer.svelte';
   import FinanceDetail from '$lib/components/detail/FinanceDetail.svelte';
 
-  // Interface data sesuai respon backend
+  // Interface data sesuai respon backend teroptimasi
   interface FinanceItem {
+    id: number;
     activity_date: string;
     kategori: string;
-    activity_name: string;
-    project_name: string;
+    name: string;
+    project?: { id: number; name: string } | null;
     value: number;
     value_formatted?: string;
-    activity?: Record<string, any>;
+    // Data detail lainnya sekarang flat di dalam item
+    [key: string]: any;
   }
 
   interface FinanceMeta {
@@ -56,9 +58,11 @@
     loading = true;
     error = '';
     try {
-      let endpoint = `/finance/monthly-report?month=${selectedMonth}&year=${selectedYear}`;
+      let params = `type=${reportMode}`;
 
-      if (reportMode === 'project') {
+      if (reportMode === 'month') {
+        params += `&month=${selectedMonth}&year=${selectedYear}`;
+      } else {
         const normalizedProjectId =
           typeof selectedProjectId === 'number'
             ? selectedProjectId
@@ -66,6 +70,7 @@
 
         if (!normalizedProjectId) {
           error = 'Silakan pilih project terlebih dahulu.';
+          loading = false;
           return;
         }
 
@@ -74,17 +79,17 @@
           const end = new Date(projectEndDate);
           if (start > end) {
             error = 'Tanggal mulai tidak boleh lebih besar dari tanggal selesai.';
+            loading = false;
             return;
           }
         }
 
-        const searchParams = new URLSearchParams({
-          project_id: String(normalizedProjectId)
-        });
-        if (projectStartDate) searchParams.append('start_date', projectStartDate);
-        if (projectEndDate) searchParams.append('end_date', projectEndDate);
-        endpoint = `/finance/project-report?${searchParams.toString()}`;
+        params += `&project_id=${normalizedProjectId}`;
+        if (projectStartDate) params += `&start_date=${projectStartDate}`;
+        if (projectEndDate) params += `&end_date=${projectEndDate}`;
       }
+
+      const endpoint = `/finance?${params}`;
 
       const res = await apiFetch<{ data: FinanceItem[], meta: FinanceMeta }>(
         endpoint,
@@ -95,7 +100,6 @@
     } catch (err: any) {
       error = err?.message || 'Gagal memuat Dokumen Keuangan.';
       console.error(err);
-
     } finally {
       loading = false;
     }
@@ -160,13 +164,13 @@
     if (!activityId) return;
 
     reportData = reportData.map((row) => {
-      if (row?.activity?.id === activityId) {
+      if (row?.id === activityId) {
         const nextValue = Number(detail.value ?? row.value ?? 0);
         return {
           ...row,
+          ...detail.item, // Sync with full detail data
           value: nextValue,
-          value_formatted: detail.value_formatted ?? formatRupiah(nextValue),
-          activity: detail.activity ?? row.activity
+          value_formatted: detail.value_formatted ?? formatRupiah(nextValue)
         };
       }
       return row;
@@ -243,7 +247,7 @@
           on:change={fetchReport} 
           class="h-10 w-full sm:w-40 rounded-lg border-slate-200 dark:border-white/10 bg-white/70 dark:bg-[#1a1728]/80 text-sm text-slate-900 dark:text-slate-100 focus:border-violet-500 focus:ring-violet-500"
         >
-          {#each months as m}
+          {#each months as m (m.val)}
             <option value={m.val}>{m.label}</option>
           {/each}
         </select>
@@ -253,7 +257,7 @@
           on:change={fetchReport} 
           class="h-10 w-full sm:w-28 rounded-lg border-slate-200 dark:border-white/10 bg-white/70 dark:bg-[#1a1728]/80 text-sm text-slate-900 dark:text-slate-100 focus:border-violet-500 focus:ring-violet-500"
         >
-          {#each years as y}
+          {#each years as y (y)}
             <option value={y}>{y}</option>
           {/each}
         </select>
@@ -265,7 +269,7 @@
           class="h-10 w-full sm:w-48 rounded-lg border-slate-200 dark:border-white/10 bg-white/70 dark:bg-[#1a1728]/80 text-sm text-slate-900 dark:text-slate-100 focus:border-violet-500 focus:ring-violet-500"
         >
           <option value="">Pilih Project</option>
-          {#each projects as project}
+          {#each projects as project (project.id)}
             <option value={project.id}>{project.name}</option>
           {/each}
         </select>
@@ -339,7 +343,7 @@
           {:else if reportData.length === 0}
             <tr><td colspan="6" class="px-6 py-8 text-center text-slate-500 dark:text-slate-400 italic">Tidak ada data keuangan pada periode ini.</td></tr>
           {:else}
-            {#each reportData as item, i}
+            {#each reportData as item, i (item.id)}
               <tr class="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
                 <td class="whitespace-nowrap px-4 py-3 text-slate-500 dark:text-slate-400">{i + 1}</td>
                 <td class="whitespace-nowrap px-4 py-3 text-slate-500 dark:text-slate-400">{item.activity_date}</td>
@@ -360,12 +364,14 @@
                       }
                     }}
                   >
-                    {item.activity_name}
+                    {item.name}
                   </button>
                 </td>
-                <td class="whitespace-nowrap px-4 py-3 text-slate-500 dark:text-slate-400">{item.project_name}</td>
+                <td class="whitespace-nowrap px-4 py-3 text-slate-500 dark:text-slate-400">
+                  {item.project?.name || '-'}
+                </td>
                 <td class="whitespace-nowrap px-4 py-3 text-right font-bold text-slate-900 dark:text-slate-100 font-mono">
-                  {formatRupiah(item.value)}
+                  {item.value_formatted}
                 </td>
               </tr>
             {/each}
