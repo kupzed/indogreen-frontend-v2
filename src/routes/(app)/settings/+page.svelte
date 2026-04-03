@@ -29,6 +29,16 @@
   // reaktif: tombol save nonaktif jika tidak ada yang berubah
   $: isDirtyProfile = formData.name.trim() !== serverName;
 
+  let profileInitialized = false;
+  // Sinkronisasi Profile dari Store secara Reaktif (untuk menangani hard refresh)
+  $: if ($currentUser && !profileInitialized) {
+    serverName = $currentUser.name;
+    serverEmail = $currentUser.email;
+    formData.name = serverName;
+    formData.email = serverEmail;
+    profileInitialized = true;
+  }
+
   // ===== Password State =====
   let pw = { current: '', next: '', confirm: '' };
   let showPw = { current: false, next: false, confirm: false };
@@ -79,8 +89,19 @@
 
   let users: RoleUser[] = [];
   let myRoles: string[] = [];
+  $: myRoles = $userRoles;
+
   let selectedUserIsSuperAdmin = false;
   let currentIsSuperAdmin = false;
+
+  // Logic untuk hak akses manajemen role secara reaktif
+  $: {
+    const isAdmin = myRoles.includes('admin');
+    const isSA = myRoles.includes('super_admin');
+    currentIsSuperAdmin = isSA;
+    currentIsOnlyAdmin = isAdmin && !isSA;
+    canManageRoles = isAdmin || isSA;
+  }
 
   // reactive list of visible roles depending on current user's privilege
   $: roleOptions = currentIsSuperAdmin ? ['user', 'staff', 'admin', 'super_admin'] : ['user', 'staff', 'admin'];
@@ -390,40 +411,6 @@
       const emptyModules = createEmptyModules();
       roleData.modules = emptyModules;
       initialRoleData.modules = cloneModules(emptyModules);
-
-      // 1. Get Profile & Roles from Stores (sudah di-fetch di layout)
-      // Kita gunakan data dari store agar tidak double-fetch
-      const $user = currentUser.subscribe(u => {
-        if (u) {
-          serverName = u.name;
-          serverEmail = u.email;
-          formData.name = serverName;
-          formData.email = serverEmail;
-        }
-      });
-
-      const $roles = userRoles.subscribe(r => {
-        myRoles = r;
-      });
-
-      // Cleanup subscriptions immediately after getting initial values
-      $user();
-      $roles();
-
-      const isAdmin = myRoles.includes('admin');
-      const isSA = myRoles.includes('super_admin');
-
-      currentIsSuperAdmin = isSA;
-      currentIsOnlyAdmin = isAdmin && !isSA;
-      canManageRoles = isAdmin || isSA;
-
-      // 2. Get Users List (If allowed)
-      if (canManageRoles) {
-        const usersRes: any = await apiFetch('/auth/role/users', { auth: true });
-        users = usersRes?.data ?? usersRes ?? [];
-
-        if (users.length > 0) applyUserRole(users[0]);
-      }
     } catch (err: any) {
       console.error(err);
       errorMsg = err?.message || 'Gagal memuat data sistem.';
@@ -432,6 +419,21 @@
       loading = false;
     }
   });
+
+  // Re-fetch users list if canManageRoles menjadi true
+  let usersLoaded = false;
+  $: if (canManageRoles && !usersLoaded && !loading) {
+    (async () => {
+      try {
+        const usersRes: any = await apiFetch('/auth/role/users', { auth: true });
+        users = usersRes?.data ?? usersRes ?? [];
+        if (users.length > 0) applyUserRole(users[0]);
+        usersLoaded = true;
+      } catch (e) {
+        console.error('Failed to load users list:', e);
+      }
+    })();
+  }
 </script>
 
 <svelte:head>
