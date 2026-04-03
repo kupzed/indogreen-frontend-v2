@@ -2,7 +2,9 @@
   import { onMount } from 'svelte';
   import Swal from 'sweetalert2';
   import { apiFetch } from '$lib/api';
-  import { setUser, patchUser } from '$lib/stores/user';
+  import { theme } from '$lib/stores/theme';
+  import { userRoles, userPermissions } from '$lib/stores/permissions';
+  import { currentUser, setUser, patchUser } from '$lib/stores/user';
 
   // ===== UI & Global State =====
   let activeTab: 'profile' | 'keamanan' | 'role' = 'profile';
@@ -376,32 +378,37 @@
     errorMsg = '';
     try {
       // 0. Get Config (Modules & Actions) dari Backend
-      // Kita panggil ini DULUAN agar kita tahu struktur permission sebelum load user
       const configRes: any = await apiFetch('/auth/role/config', { auth: true });
       moduleList = configRes?.modules ?? [];
       actionList = configRes?.actions ?? [];
 
-      // Inisialisasi expanded modules agar defaultnya terbuka semua (optional)
+      // Inisialisasi expanded modules
       moduleList.forEach(m => {
           expandedModules[m.key] = true;
       });
       
-      // Inisialisasi struktur module kosong di roleData awal
       const emptyModules = createEmptyModules();
       roleData.modules = emptyModules;
       initialRoleData.modules = cloneModules(emptyModules);
 
-      // 1. Get Profile
-      const userData: any = await apiFetch('/auth/me', { method: 'POST', auth: true });
-      serverName = userData?.name ?? '';
-      serverEmail = userData?.email ?? '';
-      formData.name = serverName;
-      formData.email = serverEmail;
-      setUser({ name: serverName, email: serverEmail });
+      // 1. Get Profile & Roles from Stores (sudah di-fetch di layout)
+      // Kita gunakan data dari store agar tidak double-fetch
+      const $user = currentUser.subscribe(u => {
+        if (u) {
+          serverName = u.name;
+          serverEmail = u.email;
+          formData.name = serverName;
+          formData.email = serverEmail;
+        }
+      });
 
-      // 2. Get My Roles (Check permissions)
-      const roleRes: any = await apiFetch('/auth/role/me', { auth: true });
-      myRoles = roleRes?.roles ?? [];
+      const $roles = userRoles.subscribe(r => {
+        myRoles = r;
+      });
+
+      // Cleanup subscriptions immediately after getting initial values
+      $user();
+      $roles();
 
       const isAdmin = myRoles.includes('admin');
       const isSA = myRoles.includes('super_admin');
@@ -410,7 +417,7 @@
       currentIsOnlyAdmin = isAdmin && !isSA;
       canManageRoles = isAdmin || isSA;
 
-      // 3. Get Users List (If allowed)
+      // 2. Get Users List (If allowed)
       if (canManageRoles) {
         const usersRes: any = await apiFetch('/auth/role/users', { auth: true });
         users = usersRes?.data ?? usersRes ?? [];

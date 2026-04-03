@@ -3,11 +3,10 @@
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import ThemeToggle from './ThemeToggle.svelte';
-  import { apiFetch, getToken, setToken } from '$lib/api';
+  import { apiFetch, setToken } from '$lib/api';
   import { fly, fade } from 'svelte/transition';
   import { currentUser, setUser } from '$lib/stores/user';
   import { userPermissions } from '$lib/stores/permissions';
-  import { get } from 'svelte/store';
   import ConfirmDialog from '../ConfirmDialog.svelte';
 
   type Link = { name: string; href: string; perm?: string };
@@ -162,18 +161,6 @@
   }
 
   onMount(() => {
-    (async () => {
-      try {
-        const hasUser = !!get(currentUser);
-        if (getToken() && !hasUser) {
-          const me: any = await apiFetch('/auth/me', { method: 'POST', auth: true });
-          if (me?.name || me?.email) setUser({ name: me.name ?? '', email: me.email ?? '' });
-        }
-      } catch (e) {
-        // ignore errors
-      }
-    })();
-
     // observe nav bound changes (use ResizeObserver to trigger recalc)
     const ro = new ResizeObserver(() => recalc());
     if (navEl) ro.observe(navEl);

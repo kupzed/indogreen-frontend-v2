@@ -27,22 +27,28 @@
           replaceState: true
         });
       } else {
-        // fetch roles & permissions (and optionally user data)
         (async () => {
           try {
-            // endpoint harus mengembalikan { roles:[], permissions:[], ... }
-            const resp: any = await apiFetch('/auth/role/me', { method: 'GET', auth: true });
-            setRoles(resp.roles ?? []);
-            setPermissions(resp.permissions ?? []);
+            // endpoint GET /auth/me mengembalikan data lengkap: { id, name, email, roles:[], permissions:[] }
+            const meRes: any = await apiFetch('/auth/me', { method: 'GET', auth: true });
+            const me = meRes?.data ?? meRes;
+            
+            if (me) {
+              // Update User Info
+              setUser({ 
+                id: me.id,
+                name: me.name ?? '', 
+                email: me.email ?? '' 
+              });
+              
+              // Update Roles & Permissions
+              setRoles(me.roles ?? []);
+              setPermissions(me.permissions ?? []);
+            }
           } catch (err) {
             // jika token expired apiFetch dengan auth:true otomatis redirect ke login
-            console.warn('Failed to load roles/permissions', err);
+            console.error('Failed to initialize auth state:', err);
           }
-          // juga bisa fetch /auth/me untuk info user, jika diperlukan
-          try {
-            const me: any = await apiFetch('/auth/me', { method: 'POST', auth: true });
-            if (me?.name || me?.email) setUser({ name: me.name ?? '', email: me.email ?? '' });
-          } catch (e) {}
         })();
       }
     }
