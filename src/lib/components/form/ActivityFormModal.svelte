@@ -102,7 +102,11 @@
 
 		try {
 			const formData = new FormData();
+			formData.append('action', 'extract');
 			formData.append('document', file);
+			if (form.project_id) {
+				formData.append('project_id', String(form.project_id));
+			}
 
 			const response = await apiFetch<{
 				data: {
@@ -116,7 +120,7 @@
 					from?: string;
 					to?: string;
 				};
-			}>('/activities/extract-document', {
+			}>('/activities', {
 				method: 'POST',
 				body: formData,
 				auth: true
