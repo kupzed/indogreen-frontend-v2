@@ -125,15 +125,10 @@
       item = root.data ?? root;
       
       const formDeps = root.form_dependencies ?? root.meta?.form_dependencies ?? {};
-      if (formDeps.projects && projects.length === 0) {
-        projects = formDeps.projects;
-      }
-      if (formDeps.barang_certificates && barangCertificates.length === 0) {
-        barangCertificates = formDeps.barang_certificates;
-      }
-      if (formDeps.statuses && statuses.length === 0) {
-        statuses = formDeps.statuses;
-      }
+      if (formDeps.projects) projects = formDeps.projects;
+      if (formDeps.barang_certificates) barangCertificates = formDeps.barang_certificates;
+      if (formDeps.statuses) statuses = formDeps.statuses;
+      if (formDeps.barang_options) filteredBarangCertificates = formDeps.barang_options;
 
       form = {
         name: item?.name ?? '',

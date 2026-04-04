@@ -104,15 +104,13 @@
 			const data = res?.data ?? res ?? {};
 			project = data.project ?? data;
 			
-			if (res?.form_dependencies) {
-				projectStatuses = Array.isArray(res.form_dependencies.project_status_list) ? res.form_dependencies.project_status_list : [];
-				projectKategoris = Array.isArray(res.form_dependencies.project_kategori_list) ? res.form_dependencies.project_kategori_list : [];
+			const deps = res?.form_dependencies;
+			if (deps) {
+				projectStatuses = Array.isArray(deps.project_status_list) ? deps.project_status_list : [];
+				projectKategoris = Array.isArray(deps.project_kategori_list) ? deps.project_kategori_list : [];
 				if (!customers?.length) {
-					customers = Array.isArray(res.form_dependencies.customers) ? res.form_dependencies.customers : [];
+					customers = Array.isArray(deps.customers) ? deps.customers : [];
 				}
-			} else {
-				projectStatuses = Array.isArray(data.project_status_list) ? data.project_status_list : [];
-				projectKategoris = Array.isArray(data.project_kategori_list) ? data.project_kategori_list : [];
 			}
 
 			// Sinkronkan form edit awal

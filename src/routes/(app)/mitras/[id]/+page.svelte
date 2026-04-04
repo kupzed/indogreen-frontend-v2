@@ -35,7 +35,7 @@
 		kontak_2_jabatan: ''
 	};
 
-	const mitraKategoriOptions = ['Pribadi', 'Perusahaan', 'Customer', 'Vendor'];
+	let mitraKategoriOptions: Array<{value: string, label: string}> = [];
 	let activeTab: 'detail' | 'barang' = 'detail';
 
 	type BarangCertificate = {
@@ -129,6 +129,9 @@
 			mitra = res?.data ?? res ?? null;
 			form = { ...form, ...(mitra || {}) };
 			editingMitra = mitra;
+			if (res?.form_dependencies?.kategori_options) {
+				mitraKategoriOptions = res.form_dependencies.kategori_options;
+			}
 		} catch (err: any) {
 			errorMitra = err?.message || 'Gagal memuat detail mitra.';
 			console.error(err);
