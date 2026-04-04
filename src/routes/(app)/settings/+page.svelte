@@ -2,9 +2,8 @@
   import { onMount } from 'svelte';
   import Swal from 'sweetalert2';
   import { apiFetch } from '$lib/api';
-  import { theme } from '$lib/stores/theme';
-  import { userRoles, userPermissions } from '$lib/stores/permissions';
-  import { currentUser, setUser, patchUser } from '$lib/stores/user';
+  import { userRoles } from '$lib/stores/permissions';
+  import { currentUser, patchUser } from '$lib/stores/user';
 
   // ===== UI & Global State =====
   let activeTab: 'profile' | 'keamanan' | 'role' = 'profile';
@@ -63,12 +62,13 @@
   // ===== ROLE MANAGEMENT STATE (DYNAMIC) =====
   
   // Tipe data untuk konfigurasi yang diterima dari backend
-  type ModuleConfig = { key: string; label: string; desc?: string };
   type ActionConfig = { key: string; label: string };
+  type ModuleConfig = { key: string; label: string; actions?: ActionConfig[]; desc?: string };
 
   // Variabel untuk menyimpan config (bukan konstanta lagi)
   let moduleList: ModuleConfig[] = [];
   let actionList: ActionConfig[] = [];
+  let roleList: { key: string; label: string }[] = [];
 
   type RoleUser = {
     id: number;
@@ -88,23 +88,20 @@
   };
 
   let users: RoleUser[] = [];
-  let myRoles: string[] = [];
   $: myRoles = $userRoles;
 
   let selectedUserIsSuperAdmin = false;
-  let currentIsSuperAdmin = false;
 
   // Logic untuk hak akses manajemen role secara reaktif
   $: {
     const isAdmin = myRoles.includes('admin');
     const isSA = myRoles.includes('super_admin');
-    currentIsSuperAdmin = isSA;
     currentIsOnlyAdmin = isAdmin && !isSA;
     canManageRoles = isAdmin || isSA;
   }
 
   // reactive list of visible roles depending on current user's privilege
-  $: roleOptions = currentIsSuperAdmin ? ['user', 'staff', 'admin', 'super_admin'] : ['user', 'staff', 'admin'];
+  $: roleOptions = roleList;
 
   let roleData: RoleForm = {
     userId: '',
@@ -139,13 +136,20 @@
   const showError = (m: string) => toast('error', 'Gagal', m);
 
   // ===== LOGIC: ROLE =====
+  
+  // Fungsi pembantu untuk mendapatkan daftar aksi yang tersedia untuk sebuah modul
+  function getAvailableActions(mod: ModuleConfig | undefined): ActionConfig[] {
+    if (!mod) return actionList;
+    return (mod.actions && mod.actions.length > 0) ? mod.actions : actionList;
+  }
 
   // Membuat object state permission kosong berdasarkan moduleList & actionList
   function createEmptyModules(): ModulesState {
     const mods: ModulesState = {};
     for (const m of moduleList) {
       mods[m.key] = {};
-      for (const a of actionList) {
+      const actions = getAvailableActions(m);
+      for (const a of actions) {
         mods[m.key][a.key] = false;
       }
     }
@@ -182,7 +186,8 @@
 
     // Isi modules berdasarkan permission string yang dimiliki user (misal: "project-view")
     for (const m of moduleList) {
-      for (const a of actionList) {
+      const actions = getAvailableActions(m);
+      for (const a of actions) {
         const permName = `${m.key}-${a.key}`;
         if (modules[m.key]) {
              modules[m.key][a.key] = perms.includes(permName);
@@ -212,7 +217,8 @@
       const mod = r.modules[m.key];
       if (!mod) continue;
       
-      for (const a of actionList) {
+      const actions = getAvailableActions(m);
+      for (const a of actions) {
         // key permission yang dikirim ke backend: "namamodul-namaaksi"
         permissions[`${m.key}-${a.key}`] = mod[a.key];
       }
@@ -228,7 +234,9 @@
     const updatedModule = { ...roleData.modules[moduleKey] };
     
     // Set semua action menjadi nilai checked
-    for (const a of actionList) {
+    const modConfig = moduleList.find(m => m.key === moduleKey);
+    const actions = getAvailableActions(modConfig);
+    for (const a of actions) {
         updatedModule[a.key] = checked;
     }
 
@@ -265,15 +273,19 @@
   function moduleAllChecked(moduleKey: string): boolean {
     const mod = roleData.modules[moduleKey];
     if (!mod) return false;
-    // Cek apakah setiap action di actionList bernilai true
-    return actionList.every((a) => mod[a.key]);
+    const modConfig = moduleList.find(m => m.key === moduleKey);
+    const actions = getAvailableActions(modConfig);
+    // Cek apakah setiap action di actions bernilai true
+    return actions.length > 0 && actions.every((a) => mod[a.key]);
   }
 
   function moduleSomeChecked(moduleKey: string): boolean {
     const mod = roleData.modules[moduleKey];
     if (!mod) return false;
-    const any = actionList.some((a) => mod[a.key]);
-    const all = actionList.every((a) => mod[a.key]);
+    const modConfig = moduleList.find(m => m.key === moduleKey);
+    const actions = getAvailableActions(modConfig);
+    const any = actions.some((a) => mod[a.key]);
+    const all = actions.every((a) => mod[a.key]);
     return any && !all;
   }
 
@@ -398,19 +410,7 @@
     loading = true;
     errorMsg = '';
     try {
-      // 0. Get Config (Modules & Actions) dari Backend
-      const configRes: any = await apiFetch('/auth/role/config', { auth: true });
-      moduleList = configRes?.modules ?? [];
-      actionList = configRes?.actions ?? [];
-
-      // Inisialisasi expanded modules
-      moduleList.forEach(m => {
-          expandedModules[m.key] = true;
-      });
-      
-      const emptyModules = createEmptyModules();
-      roleData.modules = emptyModules;
-      initialRoleData.modules = cloneModules(emptyModules);
+      // Data profile tetap di-bootstrap di sini
     } catch (err: any) {
       console.error(err);
       errorMsg = err?.message || 'Gagal memuat data sistem.';
@@ -420,17 +420,43 @@
     }
   });
 
-  // Re-fetch users list if canManageRoles menjadi true
+  // Fetch Config & Users secara reaktif jika canManageRoles menjadi true
   let usersLoaded = false;
-  $: if (canManageRoles && !usersLoaded && !loading) {
+  let configLoaded = false;
+  $: if (canManageRoles && !loading) {
     (async () => {
-      try {
-        const usersRes: any = await apiFetch('/auth/role/users', { auth: true });
-        users = usersRes?.data ?? usersRes ?? [];
-        if (users.length > 0) applyUserRole(users[0]);
-        usersLoaded = true;
-      } catch (e) {
-        console.error('Failed to load users list:', e);
+      // 1. Fetch Config Jika Belum
+      if (!configLoaded) {
+        try {
+          const configRes: any = await apiFetch('/auth/role/config', { auth: true });
+          roleList = configRes?.roles ?? [];
+          moduleList = configRes?.modules ?? [];
+          actionList = configRes?.actions ?? [];
+
+          // Inisialisasi expanded modules
+          moduleList.forEach(m => {
+              expandedModules[m.key] = true;
+          });
+          
+          const emptyModules = createEmptyModules();
+          roleData.modules = emptyModules;
+          initialRoleData.modules = cloneModules(emptyModules);
+          configLoaded = true;
+        } catch (e) {
+          console.error('Failed to load role config:', e);
+        }
+      }
+
+      // 2. Fetch Users Jika Belum (Hanya setelah config ready)
+      if (configLoaded && !usersLoaded) {
+        try {
+          const usersRes: any = await apiFetch('/auth/role/users', { auth: true });
+          users = usersRes?.data ?? usersRes ?? [];
+          if (users.length > 0) applyUserRole(users[0]);
+          usersLoaded = true;
+        } catch (e) {
+          console.error('Failed to load users list:', e);
+        }
       }
     })();
   }
@@ -757,42 +783,40 @@
                   Tipe Akun (Role)
                 </span>
                 <div class="space-y-3">
-                  {#each roleOptions as rOption}
+                  {#each roleOptions as r}
                     <label
                       class="relative flex items-center p-3 rounded-xl border transition-all cursor-pointer
-                        {roleData.selectedRole === rOption 
+                        {roleData.selectedRole === r.key 
                           ? 'bg-violet-50/50 border-violet-500 dark:bg-violet-900/20 dark:border-violet-400' 
                           : 'bg-white dark:bg-[#0f0d1b] border-slate-200 dark:border-white/10 hover:border-violet-300'}
-                        {(currentIsOnlyAdmin && selectedUserIsSuperAdmin) ? 'opacity-50 cursor-not-allowed' : ''}"
+                        {(currentIsOnlyAdmin && r.key === 'super_admin') || (currentIsOnlyAdmin && selectedUserIsSuperAdmin) ? 'opacity-50 cursor-not-allowed' : ''}"
                     >
                       <input
                         type="radio"
                         name="roleGroup"
-                        value={rOption}
+                        value={r.key}
                         bind:group={roleData.selectedRole}
-                        disabled={currentIsOnlyAdmin && selectedUserIsSuperAdmin}
+                        disabled={(currentIsOnlyAdmin && r.key === 'super_admin') || (currentIsOnlyAdmin && selectedUserIsSuperAdmin)}
                         class="sr-only"
                       />
                       <div
                         class="flex items-center justify-center h-5 w-5 rounded-full border border-slate-300 dark:border-slate-600 mr-3
-                               {roleData.selectedRole === rOption ? 'border-violet-600 bg-violet-600' : ''}"
+                               {roleData.selectedRole === r.key ? 'border-violet-600 bg-violet-600' : ''}"
                       >
-                        {#if roleData.selectedRole === 'super_admin' && !currentIsSuperAdmin}
-                          <div class="mb-3 text-sm text-red-600 dark:text-red-400">
-                            Target user memiliki role <b>super_admin</b>. Anda tidak memiliki hak untuk mengubah role ini.
-                          </div>
+                        {#if roleData.selectedRole === r.key}
+                          <div class="h-2 w-2 rounded-full bg-white shadow-sm"></div>
                         {/if}
                       </div>
                       <div>
                         <span
-                          class="block text-sm font-semibold capitalize text-slate-900 dark:text-slate-100"
+                          class="block text-sm font-semibold text-slate-900 dark:text-slate-100"
                         >
-                          {rOption}
+                          {r.label}
                         </span>
                         <span class="block text-xs text-slate-500 dark:text-slate-400">
-                          {rOption === 'super_admin'
-                            ? 'Akses penuh sistem' : rOption === 'admin'
-                            ? 'Dapat memberi role pada user' : rOption === 'staff'
+                          {r.key === 'super_admin'
+                            ? 'Akses penuh sistem' : r.key === 'admin'
+                            ? 'Dapat memberi role pada user' : r.key === 'staff'
                             ? 'Manajemen operasional (dapat dikustom)'
                             : 'Akses pengguna standar (dapat dikustom)'}
                         </span>
@@ -868,7 +892,7 @@
                       {#if expandedModules[mod.key]}
                         <div class="border-t border-slate-200/80 dark:border-white/10 px-3 py-2">
                           <div class="grid grid-cols-2 gap-x-4 gap-y-2">
-                            {#each actionList as action (action.key)}
+                            {#each getAvailableActions(mod) as action (action.key)}
                               <label class="inline-flex items-center gap-2 text-xs text-slate-700 dark:text-slate-200">
                                 <input
                                   type="checkbox"
