@@ -209,7 +209,7 @@ export async function apiFetch<T = unknown>(
 			extractMessage(payload) ||
 			(typeof payload === 'string' && payload.trim().length > 0
 				? payload
-				: `Email atau password salah! [Request failed (${response.status})]`);
+				: `Email atau password salah!`);
 
 		throw new Error(message);
 	}
