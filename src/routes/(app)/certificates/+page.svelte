@@ -173,10 +173,14 @@
 			return;
 		}
 		try {
-			const res: any = await apiFetch(`/certificate/getBarangCertificatesByProject/${projectId}`, {
-				auth: true
-			});
-			filteredBarangCertificates = res?.data ?? res ?? [];
+			// Memanggil endpoint utama /certificates dengan filter project_id
+			// Untuk mendapatkan form_dependencies yang terfilter secara otomatis
+			const url = `/certificates?${qs({ project_id: projectId, per_page: 5 })}`;
+			const res: any = await apiFetch(url, { auth: true });
+			
+			const root = res || {};
+			const formDeps = root.form_dependencies ?? root.meta?.form_dependencies ?? {};
+			filteredBarangCertificates = formDeps.barang_options ?? [];
 		} catch (err) {
 			console.error('Failed to fetch barang certificates by project:', err);
 			filteredBarangCertificates = [];
@@ -717,7 +721,7 @@
 		</div>
 
 		<!-- KONTEN UTAMA -->
-		<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+		<div class="min-h-0 flex-1">
 			{#if loading}
 				{#if activeView === 'table'}
 					<div

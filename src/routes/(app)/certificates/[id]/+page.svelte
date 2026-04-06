@@ -22,6 +22,14 @@
   let loading = true;
   let error = '';
 
+  function qs(obj: Record<string, any>) {
+    const p = new URLSearchParams();
+    Object.entries(obj).forEach(([k, v]) => {
+      if (v !== '' && v !== undefined && v !== null) p.set(k, String(v));
+    });
+    return p.toString();
+  }
+
   let projects: Option[] = [];
   let barangCertificates: Option[] = [];
   let filteredBarangCertificates: Option[] = [];
@@ -71,8 +79,14 @@
   async function fetchBarangCertificatesByProject(projectId: number) {
     if (!projectId) { filteredBarangCertificates = []; return; }
     try {
-      const res: any = await apiFetch(`/certificate/getBarangCertificatesByProject/${projectId}`, { auth: true });
-      filteredBarangCertificates = res?.data ?? res ?? [];
+      // Memanggil endpoint utama /certificates dengan filter project_id
+      // Untuk mendapatkan form_dependencies yang terfilter secara otomatis
+      const url = `/certificates?${qs({ project_id: projectId, per_page: 5 })}`;
+      const res: any = await apiFetch(url, { auth: true });
+      
+      const root = res || {};
+      const formDeps = root.form_dependencies ?? root.meta?.form_dependencies ?? {};
+      filteredBarangCertificates = formDeps.barang_options ?? [];
     } catch {
       filteredBarangCertificates = [];
     }

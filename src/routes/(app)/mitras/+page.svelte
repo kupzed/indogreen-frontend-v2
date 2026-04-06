@@ -554,7 +554,7 @@
 		</div>
 
 		<!-- SECTION KONTEN DI BAWAH BAR (scroll sendiri) -->
-		<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+		<div class="min-h-0 flex-1">
 			{#if loading}
 				{#if activeView === 'table'}
 					<div

@@ -648,7 +648,7 @@
 		</div>
 
 		<!-- SECTION KONTEN DI BAWAH BAR -->
-		<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+		<div class="min-h-0 flex-1">
 			{#if loading}
 				{#if activeView === 'table'}
 					<!-- TABLE SKELETON -->

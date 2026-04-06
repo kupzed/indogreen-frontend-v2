@@ -1557,7 +1557,7 @@
 							</div>
 
 							<!-- AREA KONTEN -->
-							<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+							<div class="min-h-0 flex-1">
 								{#if loadingActivities}
 									{#if activityView === 'table'}
 										<!-- TABLE SKELETON: Activities -->
@@ -2292,7 +2292,7 @@
 							</div>
 
 							<!-- AREA KONTEN -->
-							<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+							<div class="min-h-0 flex-1">
 								{#if loadingCertificates}
 									{#if certificateView === 'table'}
 										<!-- TABLE SKELETON: Certificates -->
