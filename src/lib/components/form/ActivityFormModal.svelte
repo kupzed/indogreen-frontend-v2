@@ -115,6 +115,7 @@
 					description?: string;
 					kategori?: string;
 					jenis?: string;
+					mitra_id: null;
 					value?: number;
 					activity_date?: string;
 					from?: string;
@@ -139,6 +140,7 @@
 			if (extracted.activity_date) form.activity_date = extracted.activity_date;
 			if (extracted.from != null) form.from = extracted.from;
 			if (extracted.to != null) form.to = extracted.to;
+			if (extracted.mitra_id != null) form.mitra_id = extracted.mitra_id;
 
 			form = form;
 
