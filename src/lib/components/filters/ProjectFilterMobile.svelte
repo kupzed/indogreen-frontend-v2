@@ -58,18 +58,6 @@
       </div>
 
       <div class="space-y-4 max-h-[65vh] overflow-y-auto no-scrollbar">
-        <!-- Sortir (Create) -->
-        <FilterSection title="Sortir" on:clear={() => setCreatedSort('desc')} showClear={!(sortBy==='created' && sortDir==='desc')}>
-          <select
-            aria-label="Sortir Create"
-            class="w-full px-3 py-2 rounded-xl text-sm border border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#12101d]/70"
-            on:change={(e) => setCreatedSort(((e.target as HTMLSelectElement).value as 'asc'|'desc'))}
-          >
-            <option value="desc" selected={sortBy==='created' && sortDir==='desc'}>Create: Terbaru</option>
-            <option value="asc"  selected={sortBy==='created' && sortDir==='asc'}>Create: Terlama</option>
-          </select>
-        </FilterSection>
-
         <FilterSection title="Status" showClear={!!statusValue} on:clear={() => update('status','')}>
           <div class="mt-2 flex flex-wrap gap-2">
             {#each statusOptions as s}
