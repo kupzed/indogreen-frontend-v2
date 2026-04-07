@@ -4,6 +4,7 @@
 	import { apiFetch, getToken } from '$lib/api';
 	import Drawer from '$lib/components/Drawer.svelte';
 	import ProjectDetail from '$lib/components/detail/ProjectDetail.svelte';
+	import ActivityDetail from '$lib/components/detail/ActivityDetail.svelte';
 	import Pagination from '$lib/components/Pagination.svelte';
 	import ProjectFormModal from '$lib/components/form/ProjectFormModal.svelte';
 	import ProjectFilterDesktop from '$lib/components/filters/ProjectFilterDesktop.svelte';
@@ -20,6 +21,7 @@
 	let canCreate = false;
 	let canUpdate = false;
 	let canDelete = false;
+	let canViewActivity = false;
 
 	// Svelte auto-subscribe: $userPermissions tersedia jika store diimport
 	$: {
@@ -27,6 +29,7 @@
 		canCreate = perms.includes('project-create');
 		canUpdate = perms.includes('project-update');
 		canDelete = perms.includes('project-delete');
+		canViewActivity = perms.includes('activity-view');
 	}
 
 	// ====== FILTER / QUERY STATE ======
@@ -99,6 +102,17 @@
 	let editingProject: any = null;
 	let showDetailDrawer = false;
 	let selectedProject: any = null;
+
+	let showActivityDetailDrawer = false;
+	let selectedActivity: any = null;
+
+	let openActivities: Record<number, boolean> = {};
+	function toggleActivities(id: number) {
+		const currentState = !!openActivities[id];
+		// Tutup semua dulu (opsional, biar rapi)
+		openActivities = {};
+		openActivities[id] = !currentState;
+	}
 
 	// pagination
 	let currentPage = 1;
@@ -279,6 +293,10 @@
 		selectedProject = { ...project };
 		showDetailDrawer = true;
 	}
+	function openActivityDetail(act: any, project: any) {
+		selectedActivity = { ...act, project };
+		showActivityDetailDrawer = true;
+	}
 
 	async function handleSubmitCreate() {
 		if (!canCreate) {
@@ -356,7 +374,7 @@
 			window.scrollTo(0, y);
 		}
 	}
-	$: lockBodyScroll(showMobileFilter || showDetailDrawer || showCreateModal || showEditModal);
+	$: lockBodyScroll(showMobileFilter || showDetailDrawer || showActivityDetailDrawer || showCreateModal || showEditModal);
 
 	// Badge (selaras Dashboard)
 	function getStatusBadgeClasses(status: string) {
@@ -886,6 +904,30 @@
 									</a>
 
 									<div class="flex justify-end gap-2 px-4 py-2 sm:px-6">
+										{#if canViewActivity}
+											<button
+												on:click|stopPropagation={() => toggleActivities(project.id)}
+												class="flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+												aria-label="Tampilkan kegiatan project"
+												title="List Kegiatan"
+											>
+												<svg
+													xmlns="http://www.w3.org/2000/svg"
+													width="14"
+													height="14"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													><rect x="3" y="5" width="6" height="6" rx="1" /><path d="m3 17 2 2 4-4" /><path
+														d="M13 6h8"
+													/><path d="M13 12h8" /><path d="M13 18h8" /></svg
+												>
+												Kegiatan
+											</button>
+										{/if}
 										<button
 											on:click|stopPropagation={() => openDetailDrawer(project)}
 											class="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700"
@@ -906,6 +948,85 @@
 											>
 										{/if}
 									</div>
+
+									{#if canViewActivity && openActivities[project.id]}
+										<div
+											class="mt-0 border-t border-black/5 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-white/[0.02]"
+										>
+											<h4 class="mb-6 text-xs font-bold uppercase tracking-wider text-slate-500">
+												Riwayat Kegiatan
+											</h4>
+
+											<div class="relative pl-8 pr-4">
+												<!-- Garis Timeline -->
+												<div
+													class="absolute top-0 bottom-0 left-[15px] w-[2px] bg-slate-200 dark:bg-white/10"
+												></div>
+
+												<div class="space-y-6">
+													{#if !project.activities || project.activities.length === 0}
+														<p class="py-2 text-xs text-slate-500 italic">Tidak ada kegiatan</p>
+													{:else}
+														{#each project.activities as act}
+															<div class="relative">
+																<!-- Dot Timeline -->
+																<div
+																	class="absolute -left-[21px] top-1.5 h-4 w-4 rounded-full border-2 border-white bg-emerald-500 ring-2 ring-emerald-500/20 dark:border-[#12101d]"
+																></div>
+
+																<div class="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-4">
+																	<div class="min-w-[120px] flex-shrink-0">
+																		<span
+																			class="text-xs font-bold tracking-tight text-emerald-600 dark:text-emerald-400"
+																		>
+																			{act.activity_date
+																				? new Date(act.activity_date).toLocaleDateString('id-ID', {
+																						day: '2-digit',
+																						month: 'long',
+																						year: 'numeric'
+																					})
+																				: '-'}
+																		</span>
+																	</div>
+																	<div class="flex-1">
+																		<div class="flex items-center gap-2">
+																			<!-- svelte-ignore a11y_click_events_have_key_events -->
+																			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+																			<h5
+																				on:click={() => openActivityDetail(act, project)}
+																				class="cursor-pointer text-sm font-semibold leading-tight text-slate-900 hover:text-violet-600 dark:text-slate-100 dark:hover:text-violet-400"
+																			>
+																				{act.name}
+																			</h5>
+																			<span
+																				class="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-white/10 dark:text-slate-400"
+																			>
+																				{act.kategori || 'Umum'}
+																			</span>
+																		</div>
+																		{#if act.mitra}
+																			<p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+																				Jenis: 
+																				<span class="font-medium text-slate-700 dark:text-slate-300">
+																					{act.jenis || '-'}
+																				</span>
+																				{#if (act.jenis === 'Customer' || act.jenis === 'Vendor') && act.mitra}
+																					| Mitra: 
+																					<span class="font-medium text-slate-700 dark:text-slate-300">
+																						{act.mitra.nama || '-'}
+																					</span>
+																				{/if}
+																			</p>
+																		{/if}
+																	</div>
+																</div>
+															</div>
+														{/each}
+													{/if}
+												</div>
+											</div>
+										</div>
+									{/if}
 								</li>
 							{/each}
 						</ul>
@@ -1029,6 +1150,31 @@
 											</td>
 											<td class="relative px-3 py-4 text-sm whitespace-nowrap">
 												<div class="flex items-center gap-2">
+													{#if canViewActivity}
+														<button
+															on:click={() => toggleActivities(project.id)}
+															class="transition-colors {openActivities[project.id]
+																? 'text-emerald-600 dark:text-emerald-400'
+																: 'text-slate-400 hover:text-emerald-500'}"
+															aria-label="Lihat Kegiatan"
+															title="Daftar Kegiatan"
+														>
+															<svg
+																xmlns="http://www.w3.org/2000/svg"
+																width="20"
+																height="20"
+																viewBox="0 0 24 24"
+																fill="none"
+																stroke="currentColor"
+																stroke-width="2"
+																stroke-linecap="round"
+																stroke-linejoin="round"
+																><rect x="3" y="5" width="6" height="6" rx="1" /><path d="m3 17 2 2 4-4" /><path
+																	d="M13 6h8"
+																/><path d="M13 12h8" /><path d="M13 18h8" /></svg
+															>
+														</button>
+													{/if}
 													<button
 														on:click={() => openDetailDrawer(project)}
 														class="text-amber-600 hover:text-amber-700"
@@ -1104,6 +1250,83 @@
 												</div>
 											</td>
 										</tr>
+
+										{#if canViewActivity && openActivities[project.id]}
+											<tr class="bg-gray-50/50 transition-all dark:bg-white/[0.02]">
+												<td colspan="7" class="px-3 py-0">
+													<div class="relative py-4 pl-12 pr-4">
+														<!-- Garis Vertikal Timeline -->
+														<div
+															class="absolute top-0 bottom-0 left-8 w-[2px] bg-slate-200 dark:bg-white/10"
+														></div>
+
+														<div class="space-y-4">
+															{#if !project.activities || project.activities.length === 0}
+																<div class="py-2 text-sm text-slate-500 italic">
+																	Belum ada aktivitas tercatat untuk proyek ini.
+																</div>
+															{:else}
+																{#each project.activities as act}
+																	<div class="relative">
+																		<!-- Dot Timeline -->
+																		<div
+																			class="absolute -left-[21px] top-1.5 h-4 w-4 rounded-full border-2 border-white bg-emerald-500 ring-2 ring-emerald-500/20 dark:border-[#12101d]"
+																		></div>
+
+																		<div class="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-4">
+																			<div class="min-w-[120px] flex-shrink-0">
+																				<span
+																					class="text-xs font-bold tracking-tight text-emerald-600 dark:text-emerald-400"
+																				>
+																					{act.activity_date
+																						? new Date(act.activity_date).toLocaleDateString('id-ID', {
+																								day: '2-digit',
+																								month: 'long',
+																								year: 'numeric'
+																							})
+																						: '-'}
+																				</span>
+																			</div>
+																			<div class="flex-1">
+																				<div class="flex items-center gap-2">
+																					<!-- svelte-ignore a11y_click_events_have_key_events -->
+																					<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+																					<h5
+																						on:click={() => openActivityDetail(act, project)}
+																						class="cursor-pointer text-sm font-semibold text-slate-900 hover:text-violet-600 dark:text-slate-100 dark:hover:text-violet-400"
+																					>
+																						{act.name}
+																					</h5>
+																					<span
+																						class="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-white/10 dark:text-slate-400"
+																					>
+																						{act.kategori || 'Umum'}
+																					</span>
+																				</div>
+																				{#if act.mitra}
+																					<p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+																						Jenis: 
+																						<span class="font-medium text-slate-700 dark:text-slate-300">
+																							{act.jenis || '-'}
+																						</span>
+																						{#if (act.jenis === 'Customer' || act.jenis === 'Vendor') && act.mitra}
+																							| Mitra: 
+																							<span class="font-medium text-slate-700 dark:text-slate-300">
+																								{act.mitra.nama || '-'}
+																							</span>
+																						{/if}
+																					</p>
+																				{/if}
+																			</div>
+																		</div>
+																	</div>
+																{/each}
+															{/if}
+														</div>
+													</div>
+												</td>
+											</tr>
+										{/if}
 									{/each}
 								</tbody>
 							</table>
@@ -1184,4 +1407,12 @@
 	on:close={() => (showDetailDrawer = false)}
 >
 	<ProjectDetail project={selectedProject} />
+</Drawer>
+
+<Drawer
+	bind:show={showActivityDetailDrawer}
+	title="Detail Kegiatan"
+	on:close={() => (showActivityDetailDrawer = false)}
+>
+	<ActivityDetail activity={selectedActivity} />
 </Drawer>
